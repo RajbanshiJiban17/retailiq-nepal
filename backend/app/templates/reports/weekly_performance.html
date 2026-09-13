@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+  <meta charset="UTF-8">
+  <title>साप्ताहिक व्यापार कार्यसम्पादन प्रतिवेदन - {{ store.name }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 14mm 14mm 16mm 14mm;
+      @bottom-right {
+        content: "पृष्ठ " counter(page) " / " counter(pages);
+        font-size: 8pt;
+        color: #64748b;
+      }
+      @bottom-left {
+        content: "RetailIQ Nepal • गोप्य व्यावसायिक प्रतिवेदन";
+        font-size: 8pt;
+        color: #64748b;
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      line-height: 1.45;
+      font-size: 9.5pt;
+      margin: 0;
+      padding: 0;
+      background-color: #ffffff;
+    }
+
+    .header-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-bottom: 2.5px solid #0f172a;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+    }
+
+    .header-table td {
+      vertical-align: top;
+    }
+
+    .brand-title {
+      font-size: 18pt;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+      margin: 0 0 4px 0;
+    }
+
+    .brand-subtitle {
+      font-size: 9.5pt;
+      color: #059669;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .store-meta {
+      font-size: 8.5pt;
+      color: #475569;
+      line-height: 1.4;
+      text-align: right;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 7.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-primary { background-color: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+    .badge-danger { background-color: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .badge-warning { background-color: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+
+    /* KPI Grid */
+    .kpi-row {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 8px 0;
+      margin-bottom: 16px;
+    }
+
+    .kpi-card {
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 10px 12px;
+      width: 25%;
+    }
+
+    .kpi-label {
+      font-size: 7.5pt;
+      color: #64748b;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 4px;
+    }
+
+    .kpi-value {
+      font-size: 14pt;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0;
+    }
+
+    .kpi-sub {
+      font-size: 7.5pt;
+      color: #059669;
+      font-weight: 600;
+      margin-top: 3px;
+    }
+
+    /* Section Headings */
+    .section-title {
+      font-size: 11pt;
+      font-weight: 700;
+      color: #0f172a;
+      border-left: 3.5px solid #059669;
+      padding-left: 8px;
+      margin: 18px 0 10px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    /* Tables */
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+      font-size: 8.5pt;
+    }
+
+    table.data-table th {
+      background-color: #f1f5f9;
+      color: #334155;
+      font-weight: 700;
+      text-align: left;
+      padding: 7px 10px;
+      border-bottom: 1.5px solid #cbd5e1;
+      font-size: 8pt;
+      text-transform: uppercase;
+    }
+
+    table.data-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #1e293b;
+    }
+
+    table.data-table tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+
+    /* Dual Column Layout */
+    .columns-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 14px;
+    }
+
+    .columns-table td {
+      vertical-align: top;
+      width: 50%;
+    }
+
+    .col-left { padding-right: 8px; }
+    .col-right { padding-left: 8px; }
+
+    /* Callout Boxes */
+    .callout-box {
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      font-size: 8.5pt;
+    }
+
+    .callout-danger {
+      background-color: #fff1f2;
+      border: 1px solid #fecdd3;
+      color: #9f1239;
+    }
+
+    .callout-ai {
+      background-color: #f0fdf4;
+      border: 1.5px dashed #86efac;
+      color: #14532d;
+      line-height: 1.5;
+    }
+
+    .callout-ai-header {
+      font-weight: 700;
+      color: #15803d;
+      font-size: 9pt;
+      margin-bottom: 5px;
+    }
+
+    /* Progress bar representation for payments */
+    .pay-row {
+      margin-bottom: 6px;
+    }
+    .pay-bar-bg {
+      background-color: #e2e8f0;
+      height: 7px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 3px;
+    }
+    .pay-bar-fill {
+      height: 100%;
+      background-color: #059669;
+      border-radius: 4px;
+    }
+
+    .footer-note {
+      border-top: 1px solid #e2e8f0;
+      padding-top: 8px;
+      font-size: 7.5pt;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <table class="header-table">
+    <tr>
+      <td>
+        <div class="brand-title">RetailIQ Nepal</div>
+        <div class="brand-subtitle">साप्ताहिक व्यापार कार्यसम्पादन प्रतिवेदन (Weekly Performance Report)</div>
+        <div style="font-size: 8pt; color: #64748b; margin-top: 4px;">
+          अवधि: <strong>{{ week_label }}</strong> • मिति: <strong>{{ nepali_date }}</strong>
+        </div>
+      </td>
+      <td class="store-meta">
+        <strong style="font-size: 11pt; color: #0f172a;">{{ store.name }}</strong><br>
+        {% if store.pan_vat_number %}स्थायी लेखा नं (PAN/VAT): <strong>{{ store.pan_vat_number }}</strong><br>{% endif %}
+        ठेगाना: {{ store.address or store.city }}<br>
+        प्रतिवेदन नं: <span style="font-family: monospace;">{{ report_id }}</span>
+      </td>
+    </tr>
+  </table>
+
+  <!-- 4 Key Financial Metric Cards -->
+  <table class="kpi-row">
+    <tr>
+      <td class="kpi-card">
+        <div class="kpi-label">कुल बिक्री (Gross Revenue)</div>
+        <div class="kpi-value">Rs. {{ "{:,.2f}".format(finance.gross_revenue_npr) }}</div>
+        <div class="kpi-sub">७ दिनको संकलन</div>
+      </td>
+      <td class="kpi-card">
+        <div class="kpi-label">खुद नाफा (Net Profit)</div>
+        <div class="kpi-value" style="color: #059669;">Rs. {{ "{:,.2f}".format(finance.net_profit_npr) }}</div>
+        <div class="kpi-sub">मार्जिन: {{ finance.profit_margin_pct }}%</div>
+      </td>
+      <td class="kpi-card">
+        <div class="kpi-label">बिक्री बिलहरू (Invoices)</div>
+        <div class="kpi-value">{{ finance.total_invoices }}</div>
+        <div class="kpi-sub">ग्राहक कारोबार संख्या</div>
+      </td>
+      <td class="kpi-card">
+        <div class="kpi-label">औसत बिल रकम (AOV)</div>
+        <div class="kpi-value">Rs. {{ "{:,.2f}".format(finance.average_order_value_npr) }}</div>
+        <div class="kpi-sub">प्रति ग्राहक खरिद</div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Dual Column: Top Selling Products & Payment Channels -->
+  <table class="columns-table">
+    <tr>
+      <!-- Column Left: Top Products -->
+      <td class="col-left">
+        <div class="section-title">सर्वोकृष्ट बिक्री भएका सामानहरू (Top Movers)</div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>सामान (Product)</th>
+              <th class="text-center">संख्या</th>
+              <th class="text-right">बिक्री (NPR)</th>
+              <th class="text-right">नाफा (NPR)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in top_products %}
+            <tr>
+              <td>
+                <strong>{{ item.name }}</strong>
+                <div style="font-size: 7.5pt; color: #64748b;">{{ item.category }}</div>
+              </td>
+              <td class="text-center font-mono">{{ item.quantity_sold }}</td>
+              <td class="text-right font-mono">Rs. {{ "{:,.2f}".format(item.revenue_npr) }}</td>
+              <td class="text-right font-mono" style="color: #059669; font-weight: 600;">Rs. {{ "{:,.2f}".format(item.profit_npr) }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="text-center" style="color: #64748b;">हालको अवधिमा कुनै कारोबार छैन।</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </td>
+
+      <!-- Column Right: Payment Channels & Inventory Risks -->
+      <td class="col-right">
+        <div class="section-title">भुक्तानी माध्यम (Payment Distribution)</div>
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 12px;">
+          {% for pay in payments %}
+          <div class="pay-row">
+            <div style="display: flex; justify-content: space-between; font-size: 8pt;">
+              <span><strong>{{ pay.method }}</strong> ({{ pay.method_nepali }})</span>
+              <span><strong>{{ pay.percentage }}%</strong> (Rs. {{ "{:,.0f}".format(pay.volume_npr) }})</span>
+            </div>
+            <div class="pay-bar-bg">
+              <div class="pay-bar-fill" style="width: {{ pay.percentage }}%;"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="section-title">मौज्दात जोखिम तथा चेतावनी (Inventory Alerts)</div>
+        <div class="callout-box callout-danger">
+          <div style="font-weight: 700; margin-bottom: 4px;">⚠️ स्टक अलर्ट तथा निष्क्रिय पुँजी</div>
+          <div>• <strong>{{ inventory.out_of_stock_count }}</strong> वटा सामानको स्टक पूर्ण सकिएको छ (Out of Stock)।</div>
+          <div>• <strong>{{ inventory.low_stock_count }}</strong> वटा सामान न्यूनतम रिअर्डर सीमा भन्दा तल छन्।</div>
+          <div>• निष्क्रिय मौज्दात (Dead Stock): <strong>{{ inventory.dead_stock_count }}</strong> वटा सामानमा <strong>Rs. {{ "{:,.2f}".format(inventory.dead_capital_trapped_npr) }}</strong> पुँजी अड्किएको छ।</div>
+          <div style="margin-top: 4px; font-weight: 600;">तुरुन्त आवश्यक रिअर्डर बजेट: Rs. {{ "{:,.2f}".format(inventory.estimated_restock_needed_npr) }}</div>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Section 3: Bajar ko Sathi AI Insights -->
+  {% if ai_strategic_advice %}
+  <div class="section-title">🤖 बजारको साथी - रणनीतिक सुझाव (AI Business Recommendations)</div>
+  <div class="callout-box callout-ai">
+    <div class="callout-ai-header">पसल व्यवस्थापन तथा नाफा वृद्धिका लागि AI सल्लाह:</div>
+    <div style="white-space: pre-line;">{{ ai_strategic_advice }}</div>
+  </div>
+  {% endif %}
+
+  <!-- Signoff / Verification Box -->
+  <table style="width: 100%; margin-top: 20px; font-size: 8pt; color: #475569;">
+    <tr>
+      <td style="width: 50%;">
+        प्रतिवेदन तयार पारिएको: <strong>{{ generated_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</strong><br>
+        प्रणाली: RetailIQ Automated Reporting Engine (Zero-Budget Edition)
+      </td>
+      <td style="width: 50%; text-align: right;">
+        __________________________________<br>
+        सञ्चालक / व्यवस्थापकको हस्ताक्षर (Sign & Stamp)
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

@@ -1,0 +1,66 @@
+# RetailIQ Nepal - Render Infrastructure as Code Blueprint
+# Zero-Budget Production Deployment (Docker Web Service + Managed PostgreSQL)
+# Region: Singapore (sin) - Closest low-latency cluster for Nepal
+
+services:
+  # ============================================================================
+  # 1. FastAPI Backend Web Service (Docker Runtime with WeasyPrint GTK Support)
+  # ============================================================================
+  - type: web
+    name: retailiq-nepal-api
+    env: docker
+    plan: free
+    region: singapore
+    rootDir: backend
+    dockerfilePath: Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: false
+      - key: PORT
+        value: 8000
+      - key: PYTHONUNBUFFERED
+        value: 1
+
+      # Database Connection String automatically linked from Render PostgreSQL
+      - key: DATABASE_URL
+        fromDatabase:
+          name: retailiq-nepal-db
+          property: connectionString
+
+      # Cryptographic JWT Secret Key (Generate a random 32+ char secret in production)
+      - key: SECRET_KEY
+        generateValue: true
+
+      - key: JWT_ALGORITHM
+        value: HS256
+
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 1440 # 24 Hours
+
+      # Gemini API Settings for Bajar ko Sathi
+      - key: GEMINI_API_KEY
+        sync: false # Set securely in Render dashboard
+
+      - key: GEMINI_MODEL
+        value: gemini-3.6-flash
+
+      # Allowed CORS Origins (Vercel Frontend + Local Dev)
+      - key: BACKEND_CORS_ORIGINS
+        value: '["https://retailiq-nepal.vercel.app","http://localhost:3000"]'
+
+# ============================================================================
+# 2. Managed PostgreSQL Database (Render Free Tier)
+# ============================================================================
+databases:
+  - name: retailiq-nepal-db
+    plan: free
+    region: singapore
+    databaseName: retailiq_nepal
+    user: retailiq_admin
+    ipAllowList: [] # Allows internal secure connections from Render web service

@@ -1,0 +1,18 @@
+# Docker build ignore patterns for RetailIQ Nepal Backend
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+.env.*
+!.env.example
+!.env.production.example
+.git
+.gitignore
+.pytest_cache
+.coverage
+htmlcov
+storage/reports/*.pdf
+storage/reports/*.html
+tests/__pycache__

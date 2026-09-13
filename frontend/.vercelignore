@@ -1,0 +1,8 @@
+# Vercel build ignore patterns for RetailIQ Nepal Frontend
+.git
+.github
+node_modules
+.next
+.env.local
+.env.*.local
+README.md

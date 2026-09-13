@@ -1,0 +1,43 @@
+# RetailIQ Nepal - Render Blueprint (Backend Directory Scoped)
+services:
+  - type: web
+    name: retailiq-nepal-api
+    env: docker
+    plan: free
+    region: singapore
+    dockerfilePath: Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: false
+      - key: PORT
+        value: 8000
+      - key: PYTHONUNBUFFERED
+        value: 1
+      - key: DATABASE_URL
+        fromDatabase:
+          name: retailiq-nepal-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 1440
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.6-flash
+      - key: BACKEND_CORS_ORIGINS
+        value: '["https://retailiq-nepal.vercel.app","http://localhost:3000"]'
+
+databases:
+  - name: retailiq-nepal-db
+    plan: free
+    region: singapore
+    databaseName: retailiq_nepal
+    user: retailiq_admin
