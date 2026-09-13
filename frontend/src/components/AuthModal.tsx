@@ -30,11 +30,39 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
     e.preventDefault();
     setError(null);
     setSuccessMsg(null);
+
+    // Client-side validations
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !cleanEmail.includes("@")) {
+      setError("कृपया सही इमेल ठेगाना प्रविष्ट गर्नुहोस् (Please enter a valid email address)।");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("पासवर्ड कम्तीमा ६ अक्षर वा अङ्कको हुनुपर्दछ (Password must be at least 6 characters)।");
+      return;
+    }
+
+    if (!isLogin) {
+      if (businessName.trim().length < 2) {
+        setError("पसल / फर्मको नाम कम्तीमा २ अक्षरको हुनुपर्दछ।");
+        return;
+      }
+      if (fullName.trim().length < 2) {
+        setError("तपाईंको पूरा नाम कम्तीमा २ अक्षरको हुनुपर्दछ।");
+        return;
+      }
+      if (panVat.trim() && !/^\d{9}$/.test(panVat.trim())) {
+        setError("नेपालको PAN वा VAT नम्बर ९ अङ्कको हुनुपर्दछ (उदा: 601234567)।");
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
       if (isLogin) {
-        const res = await loginUser(email, password);
+        const res = await loginUser(cleanEmail, password);
         const userToSave = {
           ...res.user,
           business_name: res.user.business_name || (res.user.email === "admin@retailiq.com.np" ? "पशुपति किराना तथा सुपरस्टोर" : `${res.user.full_name}'s Store`),
@@ -49,16 +77,16 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
         }, 800);
       } else {
         const res = await registerMerchant({
-          business_name: businessName,
-          pan_vat_number: panVat || undefined,
-          full_name: fullName,
-          email,
+          business_name: businessName.trim(),
+          pan_vat_number: panVat.trim() || undefined,
+          full_name: fullName.trim(),
+          email: cleanEmail,
           password,
-          phone: phone || undefined,
+          phone: phone.trim() || undefined,
         });
         const userToSave = {
           ...res.user,
-          business_name: res.user.business_name || businessName,
+          business_name: res.user.business_name || businessName.trim(),
         };
         localStorage.setItem("retailiq_token", res.access_token);
         localStorage.setItem("retailiq_user", JSON.stringify(userToSave));
@@ -70,7 +98,15 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
         }, 800);
       }
     } catch (err: any) {
-      setError(err.message || "प्रक्रिया असफल भयो। कृपया फेरि प्रयास गर्नुहोस्।");
+      const errMsg =
+        typeof err === "string"
+          ? err
+          : typeof err?.message === "string"
+          ? err.message
+          : typeof err?.detail === "string"
+          ? err.detail
+          : "प्रक्रिया असफल भयो। कृपया आफ्नो विवरण जाँच्नुहोस्।";
+      setError(errMsg);
     } finally {
       setLoading(false);
     }
@@ -124,7 +160,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
         {error && (
           <div className="mb-4 flex items-start gap-2 rounded-xl bg-rose-950/50 border border-rose-800/60 p-3 text-xs text-rose-300">
             <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
-            <span>{error}</span>
+            <span>{typeof error === "string" ? error : JSON.stringify(error)}</span>
           </div>
         )}
         {successMsg && (
@@ -223,13 +259,14 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1">
-              गोप्य पासवर्ड (Password) *
+              गोप्य पासवर्ड (Password) * <span className="text-[10px] text-slate-400 font-normal">(कम्तीमा ६ अक्षर)</span>
             </label>
             <div className="relative">
               <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
               <input
                 type="password"
                 required
+                minLength={6}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -246,6 +283,23 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
             {isLogin ? "लगइन गर्नुहोस् (Sign In)" : "नयाँ पसल खाता खोल्नुहोस् (Register Business)"}
           </button>
+
+          {isLogin && (
+            <div className="mt-4 pt-3.5 border-t border-slate-800 text-center">
+              <p className="text-[11px] text-slate-400 mb-1.5">वा परीक्षणका लागि सिधै डेमो खाता प्रयोग गर्नुहोस्:</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail("admin@retailiq.com.np");
+                  setPassword("admin123");
+                  setError(null);
+                }}
+                className="text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-950/60 border border-emerald-800/50 rounded-lg px-3 py-1.5 transition inline-flex items-center gap-1.5"
+              >
+                ⚡ डेमो विवरण स्वतः भर्नुहोस् (Fill Demo Account)
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>
