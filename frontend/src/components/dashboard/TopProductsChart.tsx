@@ -19,7 +19,7 @@ interface TopProduct {
   category: string;
   unitsSold: number;
   revenue: number;
-  stockLeft: number;
+  stockLeft?: number;
 }
 
 const TOP_PRODUCTS_DATA: TopProduct[] = [
@@ -85,8 +85,8 @@ function CustomTooltip({ active, payload }: any) {
           </div>
           <div className="flex justify-between gap-4 pt-1 border-t border-slate-100 dark:border-slate-800">
             <span className="text-slate-500">Available Stock:</span>
-            <span className={`font-semibold ${data.stockLeft <= 15 ? "text-amber-600" : "text-slate-700"}`}>
-              {data.stockLeft} units {data.stockLeft <= 15 ? "(Reorder Soon)" : ""}
+            <span className={`font-semibold ${(data.stockLeft ?? 0) <= 15 ? "text-amber-600" : "text-slate-700"}`}>
+              {data.stockLeft ?? 0} units {(data.stockLeft ?? 0) <= 15 ? "(Reorder Soon)" : ""}
             </span>
           </div>
         </div>

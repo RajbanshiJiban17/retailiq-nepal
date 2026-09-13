@@ -11,6 +11,7 @@ import { InventoryRestockAlerts } from "@/components/dashboard/InventoryRestockA
 import { PosUploadCard } from "@/components/PosUploadCard";
 import { AuthModal } from "@/components/AuthModal";
 import { UserProfile, ETLUploadSummary } from "@/types";
+import { loginUser } from "@/lib/api";
 import {
   Building2,
   FileSpreadsheet,
@@ -23,12 +24,19 @@ import {
   Calendar,
   Layers,
   ArrowRight,
+  Lock,
+  ShieldAlert,
+  Loader2,
+  ShieldCheck,
 } from "lucide-react";
 
 export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState<"7D" | "30D" | "YTD">("30D");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [authChecking, setAuthChecking] = useState(true);
+  const [isDemoLoggingIn, setIsDemoLoggingIn] = useState(false);
+  const [demoError, setDemoError] = useState<string | null>(null);
   const [etlSummary, setEtlSummary] = useState<ETLUploadSummary | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -40,9 +48,12 @@ export default function DashboardPage() {
       try {
         setCurrentUser(JSON.parse(savedUser));
       } catch {
-        // ignore
+        setCurrentUser(null);
       }
+    } else {
+      setCurrentUser(null);
     }
+    setAuthChecking(false);
 
     // Read latest uploaded ETL data
     const savedEtl = localStorage.getItem("retailiq_latest_etl");
@@ -87,6 +98,181 @@ export default function DashboardPage() {
     localStorage.removeItem("retailiq_user");
     setCurrentUser(null);
   };
+
+  const handleQuickDemoLogin = async () => {
+    setIsDemoLoggingIn(true);
+    setDemoError(null);
+    try {
+      const res = await loginUser("admin@retailiq.com.np", "admin123");
+      const userToSave = {
+        ...res.user,
+        business_name: res.user.business_name || "पशुपति किराना तथा सुपरस्टोर",
+      };
+      localStorage.setItem("retailiq_token", res.access_token);
+      localStorage.setItem("retailiq_user", JSON.stringify(userToSave));
+      window.dispatchEvent(new Event("retailiq_user_updated"));
+      setCurrentUser(userToSave);
+    } catch (err: any) {
+      setDemoError(err.message || "डेमो लगइन असफल भयो।");
+    } finally {
+      setIsDemoLoggingIn(false);
+    }
+  };
+
+  // If still checking localStorage auth state
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-400 mb-3" />
+        <p className="text-sm font-medium">खाता प्रमाणीकरण हुँदैछ (Checking authentication)...</p>
+      </div>
+    );
+  }
+
+  // If unauthenticated: Strictly block viewing the sales dashboard!
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-emerald-500 selection:text-white flex flex-col justify-between">
+        {/* Top Header */}
+        <header className="border-b border-slate-800 bg-slate-950/85 backdrop-blur-md">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2.5 text-white font-black text-xl tracking-tight">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center font-bold text-slate-950">
+                IQ
+              </div>
+              <span>
+                RetailIQ <span className="text-emerald-400 font-semibold">नेपाल</span>
+              </span>
+            </Link>
+
+            <div className="flex items-center gap-3">
+              <Link
+                href="/"
+                className="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-xl border border-slate-800 hover:border-slate-700 transition"
+              >
+                ← मुख्य पृष्ठ (Home)
+              </Link>
+              <button
+                onClick={() => setAuthModalOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 px-4 py-1.5 text-xs font-bold text-slate-950 transition shadow-md shadow-emerald-500/20"
+              >
+                <LogIn className="h-3.5 w-3.5" />
+                पसल लगइन (Sign In)
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Lock Screen Body */}
+        <main className="max-w-3xl mx-auto px-4 py-12 text-center my-auto">
+          <div className="relative overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 p-8 sm:p-12 shadow-2xl">
+            {/* Ambient glow */}
+            <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Lock Badge */}
+            <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 border border-amber-500/30 px-3.5 py-1 text-xs font-bold text-amber-300 mb-6">
+              <Lock className="h-3.5 w-3.5 text-amber-400" />
+              सुरक्षित ड्यासबोर्ड (Protected Business Portal)
+            </div>
+
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-slate-800/80 border border-slate-700 text-emerald-400 shadow-xl mb-6">
+              <ShieldAlert className="h-10 w-10 text-emerald-400" />
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              बिक्री ड्यासबोर्ड हेर्न कृपया पहिले लगइन गर्नुहोस्
+            </h1>
+            <p className="text-sm sm:text-base text-slate-300 mt-3 max-w-xl mx-auto leading-relaxed">
+              गोपनीयता र मल्टी-टेनेन्ट सुरक्षा नियम अनुसार, प्रत्येक पसलको वास्तविक बिक्री, नाफा र इन्भेन्टरी केवल आधिकारिक खाताबाट मात्र हेर्न र एक्सेल/CSV अपलोड गर्न मिल्छ।
+            </p>
+
+            {/* 3 Protection Reasons */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-8 text-left">
+              <div className="rounded-2xl border border-slate-800 bg-slate-850/60 p-4">
+                <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold mb-1">
+                  <ShieldCheck className="h-4 w-4 shrink-0" />
+                  डाटा गोपनीयता
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  तपाईंको पसलको कारोबार विवरण अन्य कसैले हेर्न पाउँदैन।
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-800 bg-slate-850/60 p-4">
+                <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold mb-1">
+                  <FileSpreadsheet className="h-4 w-4 shrink-0" />
+                  CSV / Excel अपलोड
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  लगइन गरेपछि आफ्नो पसलको बिलिङ डाटा सुरक्षित अपलोड गर्नुहोस्।
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-800 bg-slate-850/60 p-4">
+                <div className="flex items-center gap-2 text-teal-400 text-xs font-bold mb-1">
+                  <Sparkles className="h-4 w-4 shrink-0" />
+                  बजारको साथी AI
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  आफ्नै पसलको नाफा र माग पूर्वानुमानबारे नेपालीमै सोध्नुहोस्।
+                </p>
+              </div>
+            </div>
+
+            {demoError && (
+              <div className="mb-4 rounded-xl bg-rose-950/50 border border-rose-800/60 p-3 text-xs text-rose-300">
+                {demoError}
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                onClick={() => setAuthModalOpen(true)}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-6 py-3 text-sm transition shadow-xl shadow-emerald-500/25"
+              >
+                <LogIn className="h-4 w-4" />
+                🔐 पसल लगइन वा दर्ता गर्नुहोस् (Sign In / Register)
+              </button>
+
+              <button
+                onClick={handleQuickDemoLogin}
+                disabled={isDemoLoggingIn}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-300 font-semibold px-5 py-3 text-sm transition disabled:opacity-50"
+              >
+                {isDemoLoggingIn ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
+                    लगइन हुँदैछ...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 text-emerald-400" />
+                    ⚡ १-क्लिक डेमो लगइन (Pashupati Kirana)
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="mt-6 pt-5 border-t border-slate-800/80 text-xs text-slate-400 flex items-center justify-center gap-4">
+              <span>डेमो खाता: <code className="font-mono text-emerald-400">admin@retailiq.com.np</code></span>
+              <span>पासवर्ड: <code className="font-mono text-emerald-400">admin123</code></span>
+            </div>
+          </div>
+        </main>
+
+        <AuthModal
+          isOpen={authModalOpen}
+          onClose={() => setAuthModalOpen(false)}
+          onSuccess={(user) => {
+            setCurrentUser(user);
+          }}
+        />
+
+        <footer className="border-t border-slate-900 py-6 text-center text-xs text-slate-500">
+          RetailIQ Nepal • Protected Store Analytics
+        </footer>
+      </div>
+    );
+  }
 
   // Resolve Store / Merchant title dynamically
   const displayStoreName =
@@ -334,7 +520,9 @@ export default function DashboardPage() {
               </button>
             </div>
             <PosUploadCard
-              businessId={currentUser?.business_id || "11111111-1111-1111-1111-111111111111"}
+              currentUser={currentUser}
+              businessId={currentUser?.business_id}
+              onRequireAuth={() => setAuthModalOpen(true)}
               onUploadSuccess={(summary) => {
                 setEtlSummary(summary);
                 setTimeout(() => setUploadModalOpen(false), 1200);

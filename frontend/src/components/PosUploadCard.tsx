@@ -1,17 +1,22 @@
-"use client";
-
 import React, { useState, useRef } from "react";
-import { UploadCloud, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2, Download, ArrowRight, Sparkles } from "lucide-react";
+import { UploadCloud, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2, Download, ArrowRight, Sparkles, Lock, LogIn } from "lucide-react";
 import { uploadPosCsv, API_BASE_URL } from "@/lib/api";
-import { ETLUploadSummary } from "@/types";
+import { ETLUploadSummary, UserProfile } from "@/types";
 import Link from "next/link";
 
 interface PosUploadCardProps {
   businessId?: string;
+  currentUser?: UserProfile | null;
+  onRequireAuth?: () => void;
   onUploadSuccess?: (summary: ETLUploadSummary) => void;
 }
 
-export function PosUploadCard({ businessId = "11111111-1111-1111-1111-111111111111", onUploadSuccess }: PosUploadCardProps) {
+export function PosUploadCard({
+  businessId,
+  currentUser,
+  onRequireAuth,
+  onUploadSuccess,
+}: PosUploadCardProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -19,7 +24,33 @@ export function PosUploadCard({ businessId = "11111111-1111-1111-1111-1111111111
   const [summary, setSummary] = useState<ETLUploadSummary | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Determine effective login state and businessId
+  const effectiveUser = currentUser ?? (() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("retailiq_user");
+        return saved ? JSON.parse(saved) : null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  const effectiveBusinessId =
+    effectiveUser?.business_id ||
+    businessId ||
+    "11111111-1111-1111-1111-111111111111";
+
+  const isLoggedIn = Boolean(effectiveUser);
+
   const handleFileChange = (selectedFile: File) => {
+    if (!isLoggedIn) {
+      setError("⚠️ फाइल अपलोड गर्न कृपया पहिले पसल लगइन वा दर्ता गर्नुहोस्। (Please sign in to upload files)");
+      if (onRequireAuth) onRequireAuth();
+      return;
+    }
+
     if (!selectedFile.name.toLowerCase().endsWith(".csv")) {
       setError("कृपया केवल CSV (.csv) फाइल मात्र छान्नुहोस्। (Only CSV files supported)");
       setFile(null);
@@ -32,18 +63,31 @@ export function PosUploadCard({ businessId = "11111111-1111-1111-1111-1111111111
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
+
+    if (!isLoggedIn) {
+      setError("⚠️ फाइल अपलोड गर्न कृपया पहिले पसल लगइन वा दर्ता गर्नुहोस्। (Please sign in to upload files)");
+      if (onRequireAuth) onRequireAuth();
+      return;
+    }
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFileChange(e.dataTransfer.files[0]);
     }
   };
 
   const handleUpload = async () => {
+    if (!isLoggedIn) {
+      setError("⚠️ फाइल अपलोड गर्न कृपया पहिले पसल लगइन वा दर्ता गर्नुहोस्। (Please sign in to upload files)");
+      if (onRequireAuth) onRequireAuth();
+      return;
+    }
+
     if (!file) return;
     setUploading(true);
     setError(null);
 
     try {
-      const res: ETLUploadSummary = await uploadPosCsv(file, businessId);
+      const res: ETLUploadSummary = await uploadPosCsv(file, effectiveBusinessId);
       setSummary(res);
       // Persist latest ETL summary for dashboard consumption
       try {
@@ -94,6 +138,29 @@ export function PosUploadCard({ businessId = "11111111-1111-1111-1111-1111111111
         </a>
       </div>
 
+      {/* Login Required Warning Banner when Unauthenticated */}
+      {!isLoggedIn && (
+        <div className="mt-4 rounded-xl bg-amber-500/10 border border-amber-500/30 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-200">
+          <div className="flex items-center gap-2.5">
+            <Lock className="h-4 w-4 text-amber-400 shrink-0" />
+            <div>
+              <span className="font-bold text-amber-300 block">पसल लगइन आवश्यक (Login Required)</span>
+              <span className="text-[11px] text-amber-200/80">
+                बिक्री तथा इन्भेन्टरी CSV/Excel डाटा अपलोड गर्न पहिले आफ्नो पसलको खाता लगइन गर्नुहोस्।
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onRequireAuth?.()}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-1.5 transition shadow-sm shrink-0 w-fit"
+          >
+            <LogIn className="h-3.5 w-3.5" />
+            पहिले लगइन गर्नुहोस्
+          </button>
+        </div>
+      )}
+
       {/* Drag and Drop Zone */}
       {!summary && (
         <div className="mt-5 space-y-4">
@@ -101,9 +168,18 @@ export function PosUploadCard({ businessId = "11111111-1111-1111-1111-1111111111
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => {
+              if (!isLoggedIn) {
+                setError("⚠️ फाइल अपलोड गर्न कृपया पहिले पसल लगइन वा दर्ता गर्नुहोस्। (Please login first)");
+                if (onRequireAuth) onRequireAuth();
+                return;
+              }
+              fileInputRef.current?.click();
+            }}
             className={`cursor-pointer rounded-xl border-2 border-dashed p-8 text-center transition-all ${
-              isDragging
+              !isLoggedIn
+                ? "border-amber-500/40 bg-slate-900/50 hover:border-amber-400/60"
+                : isDragging
                 ? "border-emerald-400 bg-emerald-950/20 scale-[0.99]"
                 : file
                 ? "border-emerald-500/60 bg-slate-800/50"
@@ -118,15 +194,25 @@ export function PosUploadCard({ businessId = "11111111-1111-1111-1111-1111111111
               onChange={(e) => e.target.files?.[0] && handleFileChange(e.target.files[0])}
             />
 
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-800 text-emerald-400 border border-slate-700">
-              <UploadCloud className="h-6 w-6" />
+            <div className={`mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border ${
+              !isLoggedIn
+                ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                : "bg-slate-800 text-emerald-400 border-slate-700"
+            }`}>
+              {!isLoggedIn ? <Lock className="h-6 w-6" /> : <UploadCloud className="h-6 w-6" />}
             </div>
 
             <p className="mt-3 text-sm font-semibold text-white">
-              {file ? file.name : "यहाँ CSV फाइल ड्र्याग गर्नुहोस् वा क्लिक गर्नुहोस् (Drag & Drop or Browse)"}
+              {!isLoggedIn
+                ? "🔒 फाइल अपलोड गर्न पहिले लगइन गर्नुहोस् (Click to Sign In)"
+                : file
+                ? file.name
+                : "यहाँ CSV फाइल ड्र्याग गर्नुहोस् वा क्लिक गर्नुहोस् (Drag & Drop or Browse)"}
             </p>
             <p className="mt-1 text-xs text-slate-400">
-              {file
+              {!isLoggedIn
+                ? "बिक्री डाटा विश्लेषणका लागि पसलको आधिकारिक खाता आवश्यक पर्दछ"
+                : file
                 ? `साइज: ${(file.size / 1024).toFixed(1)} KB • अपलोड गर्न तयार`
                 : "अधिकतम फाइल साइज: 10MB • नेपाली रुपैयाँ (Rs. / NPR) स्वतः सफा हुन्छ"}
             </p>
@@ -139,27 +225,50 @@ export function PosUploadCard({ businessId = "11111111-1111-1111-1111-1111111111
             </div>
           )}
 
-          <div className="flex items-center justify-between gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
             <span className="text-xs text-slate-400">
-              Business Tenant ID: <code className="font-mono text-emerald-400 bg-slate-800 px-1.5 py-0.5 rounded">{businessId.slice(0, 18)}...</code>
-            </span>
-            <button
-              onClick={handleUpload}
-              disabled={!file || uploading}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-600/30 hover:from-emerald-500 hover:to-teal-500 transition disabled:opacity-40"
-            >
-              {uploading ? (
+              {isLoggedIn ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  डाटा प्रोसेसिङ हुँदैछ (ETL Cleaning)...
+                  Business Tenant ID: <code className="font-mono text-emerald-400 bg-slate-800 px-1.5 py-0.5 rounded">{effectiveBusinessId.slice(0, 18)}...</code>
                 </>
               ) : (
-                <>
-                  <Sparkles className="h-4 w-4" />
-                  फाइल विश्लेषण गर्नुहोस् (Analyze & Ingest)
-                </>
+                <span className="text-amber-400 flex items-center gap-1">
+                  <Lock className="h-3.5 w-3.5" /> लगइन गरेपछि मात्र तपाईंको आफ्नै Business ID मा डाटा सुरक्षित हुन्छ
+                </span>
               )}
-            </button>
+            </span>
+            {isLoggedIn ? (
+              <button
+                type="button"
+                onClick={handleUpload}
+                disabled={!file || uploading}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-600/30 hover:from-emerald-500 hover:to-teal-500 transition disabled:opacity-40"
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    डाटा प्रोसेसिङ हुँदैछ (ETL Cleaning)...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    फाइल विश्लेषण गर्नुहोस् (Analyze & Ingest)
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setError("⚠️ फाइल अपलोड गर्न कृपया पहिले पसल लगइन वा दर्ता गर्नुहोस्।");
+                  if (onRequireAuth) onRequireAuth();
+                }}
+                className="inline-flex items-center gap-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 px-5 py-2.5 text-xs font-bold text-amber-300 hover:text-white transition"
+              >
+                <Lock className="h-4 w-4 text-amber-400" />
+                पहिले लगइन गर्नुहोस् (Login Required)
+              </button>
+            )}
           </div>
         </div>
       )}

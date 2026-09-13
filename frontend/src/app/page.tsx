@@ -286,7 +286,9 @@ export default function HomePage() {
         {/* SECTION 1: POS / Excel CSV Upload Widget (Requested by User) */}
         <section>
           <PosUploadCard
-            businessId={currentUser?.business_id || "11111111-1111-1111-1111-111111111111"}
+            businessId={currentUser?.business_id}
+            currentUser={currentUser}
+            onRequireAuth={() => setAuthModalOpen(true)}
             onUploadSuccess={() => {
               loadItems();
             }}

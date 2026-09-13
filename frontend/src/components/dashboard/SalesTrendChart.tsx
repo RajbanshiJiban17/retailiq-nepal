@@ -15,7 +15,7 @@ import { TrendingUp, Calendar } from "lucide-react";
 
 interface MonthlyData {
   month: string;
-  monthNepali: string;
+  monthNepali?: string;
   revenue: number;
   profit: number;
   orders: number;
