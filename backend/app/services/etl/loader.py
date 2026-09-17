@@ -221,16 +221,18 @@ class POSDataLoader:
             p_mode = r.payment_method.value if hasattr(r.payment_method, "value") else str(r.payment_method)
             pay_totals[p_mode] += float(r.subtotal)
 
-        top_prods = sorted(prod_stats.values(), key=lambda x: x["revenue"], reverse=True)[:6]
+        top_prods = sorted(prod_stats.values(), key=lambda x: x["revenue"], reverse=True)
 
         # Sync with items live catalog
         try:
             from app.api.v1.endpoints.items import InventoryItem as CatItem, update_catalog_from_etl_records
             dynamic_catalog: list = []
-            for idx, p in enumerate(top_prods):
+            for idx, p in enumerate(top_prods[:25]):
                 units = p.get("unitsSold", 50)
                 avg_rate = round(p["revenue"] / units, 2) if units > 0 else 100.0
-                stock_units = max(12, int(units * 0.15))
+                stock_units = max(8, int(units * 1.4) + (35 if idx % 3 == 0 else (12 if idx % 3 == 1 else 48)))
+                p["stockLeft"] = stock_units
+                reorder_val = max(10, int(stock_units * 0.35))
                 dynamic_catalog.append(
                     CatItem(
                         id=idx + 1,
@@ -239,7 +241,7 @@ class POSDataLoader:
                         category=p.get("category") or "General",
                         quantity=stock_units,
                         price_npr=avg_rate,
-                        reorder_level=max(10, int(stock_units * 0.4)),
+                        reorder_level=reorder_val,
                     )
                 )
             if dynamic_catalog:

@@ -173,19 +173,19 @@ async def run_auth_and_ratelimit_tests():
     import json
 
     # A. Demo Token Generation
-    demo_req = urllib.request.Request("http://localhost:8000/api/v1/auth/demo-token", method="POST")
-    demo_res = urllib.request.urlopen(demo_req)
+    demo_req = urllib.request.Request("http://127.0.0.1:8000/api/v1/auth/demo-token", method="POST")
+    demo_res = urllib.request.urlopen(demo_req, timeout=5)
     assert demo_res.status == 200
-    demo_token_data = json.loads(demo_res.read().decode())
+    demo_token_data = json.loads(demo_res.read().decode("utf-8"))
     assert "access_token" in demo_token_data
     access_token = demo_token_data["access_token"]
     print(f"  [PASS] Acquired demo JWT token: {access_token[:25]}...")
 
     # B. Test Accessing /auth/me Without Token -> Expect 401
-    unauth_req = urllib.request.Request("http://localhost:8000/api/v1/auth/me")
+    unauth_req = urllib.request.Request("http://127.0.0.1:8000/api/v1/auth/me")
     unauth_caught = False
     try:
-        urllib.request.urlopen(unauth_req)
+        urllib.request.urlopen(unauth_req, timeout=5)
     except urllib.error.HTTPError as e:
         if e.code == 401:
             unauth_caught = True
@@ -195,16 +195,16 @@ async def run_auth_and_ratelimit_tests():
     # C. Test Rate Limiting on /auth/login (5/minute)
     print("  Triggering rapid login requests to verify 429 Too Many Requests...")
     rate_limit_triggered = False
-    for attempt in range(1, 8):
-        login_body = json.dumps({"email": "baduser@example.com", "password": "WrongPassword123"}).encode()
+    for attempt in range(1, 9):
+        login_body = json.dumps({"email": "baduser@example.com", "password": "WrongPassword123"}).encode("utf-8")
         login_req = urllib.request.Request(
-            "http://localhost:8000/api/v1/auth/login",
+            "http://127.0.0.1:8000/api/v1/auth/login",
             data=login_body,
             headers={"Content-Type": "application/json"},
             method="POST",
         )
         try:
-            urllib.request.urlopen(login_req)
+            urllib.request.urlopen(login_req, timeout=5)
         except urllib.error.HTTPError as err:
             if err.code == 429:
                 rate_limit_triggered = True

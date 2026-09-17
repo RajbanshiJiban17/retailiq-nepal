@@ -151,8 +151,12 @@ async def list_items(
     search: Optional[str] = None,
 ) -> List[InventoryItem]:
     items: List[InventoryItem] = []
-    if business_id and str(business_id) in TENANT_CATALOGS:
-        items = TENANT_CATALOGS[str(business_id)]
+    if business_id:
+        # Strictly return this tenant's items (or empty list if no items uploaded yet)
+        items = TENANT_CATALOGS.get(str(business_id), [])
+        # For default demo tenant or initial exploration if nothing uploaded, provide starter items
+        if not items and str(business_id) == "00000000-0000-0000-0000-000000000001":
+            items = SAMPLE_ITEMS
     elif ACTIVE_CATALOG:
         items = ACTIVE_CATALOG
     else:

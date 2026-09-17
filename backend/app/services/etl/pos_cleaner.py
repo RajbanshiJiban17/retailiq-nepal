@@ -18,6 +18,7 @@ COLUMN_ALIASES: Dict[str, List[str]] = {
     "invoice_number": [
         "invoice_number", "invoice_no", "invoiceno", "bill_number", "bill_no",
         "billno", "invoice", "bill", "receipt_no", "receipt", "inv_no",
+        "invoice_id", "invoiceid", "inv_id", "invid", "bill_id", "billid",
         "transaction_id", "transactionid", "trans_id", "tid", "order_id", "orderid"
     ],
     "sku": [
@@ -27,11 +28,12 @@ COLUMN_ALIASES: Dict[str, List[str]] = {
     "product_name": [
         "product_name", "productname", "item_name", "itemname", "product",
         "item", "description", "particulars", "item_description", "product_title",
-        "title"
+        "title", "product_line", "productline", "line"
     ],
     "category": [
         "category", "dept", "department", "item_category", "group", "product_group",
-        "product_category", "productcategory", "cat"
+        "product_category", "productcategory", "cat", "product_line", "productline", "line",
+        "category_name", "categoryname"
     ],
     "quantity": [
         "quantity", "qty", "count", "units", "pcs", "volume", "pieces"
@@ -44,7 +46,8 @@ COLUMN_ALIASES: Dict[str, List[str]] = {
         "discount_amount", "discount", "disc", "disc_amount", "item_discount"
     ],
     "tax_amount": [
-        "tax_amount", "tax", "vat_amount", "vat", "gst", "item_vat"
+        "tax_amount", "tax", "vat_amount", "vat", "gst", "item_vat",
+        "tax_5%", "tax_5", "tax5%", "tax5", "tax_13%", "tax_13", "vat_13%"
     ],
     "subtotal": [
         "subtotal", "total", "line_total", "linetotal", "amount", "net_amount",
@@ -202,6 +205,32 @@ class POSDataCleaner:
     """
 
     @classmethod
+    def read_file_bytes(cls, content: bytes, filename: Optional[str] = None) -> pd.DataFrame:
+        """
+        Reads CSV or Excel (.xlsx, .xls) bytes into a DataFrame.
+        """
+        is_excel = False
+        if filename:
+            fn = filename.lower()
+            if fn.endswith(".xlsx") or fn.endswith(".xls"):
+                is_excel = True
+        
+        # Check zip/ole magic bytes for xlsx / xls
+        if not is_excel and len(content) >= 4:
+            if content.startswith(b"PK\x03\x04") or content.startswith(b"\xd0\xcf\x11\xe0"):
+                is_excel = True
+
+        if is_excel:
+            try:
+                df = pd.read_excel(io.BytesIO(content), dtype=str)
+                df = df.dropna(how="all")
+                return df
+            except Exception:
+                pass
+
+        return cls.read_csv_bytes(content)
+
+    @classmethod
     def read_csv_bytes(cls, content: bytes) -> pd.DataFrame:
         """
         Reads CSV bytes into a DataFrame trying standard encodings.
@@ -244,11 +273,11 @@ class POSDataCleaner:
         return renamed_df, mapping
 
     @classmethod
-    def sanitize(cls, raw_content: bytes) -> CleanedPOSResult:
+    def sanitize(cls, raw_content: bytes, filename: Optional[str] = None) -> CleanedPOSResult:
         """
-        Main pipeline method: reads bytes, normalizes headers, cleans and validates records.
+        Main pipeline method: reads bytes (Excel or CSV), normalizes headers, cleans and validates records.
         """
-        df = cls.read_csv_bytes(raw_content)
+        df = cls.read_file_bytes(raw_content, filename=filename)
         total_rows = len(df)
         df, header_mapping = cls.normalize_headers(df)
 
@@ -260,10 +289,12 @@ class POSDataCleaner:
             result.errors.append(
                 ETLRowError(
                     row_number=1,
-                    reason=f"CSV missing mandatory columns. Found: {list(df.columns)}. Needs transaction/invoice ID and product/category columns.",
+                    reason=f"Dataset missing mandatory columns. Found: {list(df.columns)}. Needs transaction/invoice ID and product/category columns.",
                 )
             )
             return result
+
+        has_item_col = any(c in df.columns for c in ["product_name", "sku"])
 
         for idx, row in df.iterrows():
             row_num = idx + 2  # 1-indexed (account for 1 header row)
@@ -288,16 +319,19 @@ class POSDataCleaner:
             raw_sku = row_dict.get("sku")
             raw_cat = row_dict.get("category")
 
-            if (pd.isna(raw_name) or str(raw_name).strip() == "") and (pd.isna(raw_sku) or str(raw_sku).strip() == ""):
-                # If product name is not present, use Category (e.g. 'Beauty', 'Clothing', 'Electronics') as product name
-                if pd.notna(raw_cat) and str(raw_cat).strip():
+            name_empty = pd.isna(raw_name) or str(raw_name).strip() == ""
+            sku_empty = pd.isna(raw_sku) or str(raw_sku).strip() == ""
+
+            if name_empty and sku_empty:
+                # If dataset genuinely lacks product/sku columns, use Category Item
+                if not has_item_col and pd.notna(raw_cat) and str(raw_cat).strip():
                     product_name = f"{str(raw_cat).strip()} Item"
                 else:
                     result.errors.append(
                         ETLRowError(
                             row_number=row_num,
                             invoice_number=invoice_number,
-                            reason="Missing product name, SKU, and category. Record rejected.",
+                            reason="Missing both product name and SKU. Record rejected.",
                             raw_data={k: str(v) for k, v in row_dict.items() if pd.notna(v)},
                         )
                     )
@@ -364,7 +398,11 @@ class POSDataCleaner:
                 continue
 
             # 5. Clean Category, Payment Method, Dates & Customer Info
-            category = str(row_dict.get("category", "General")).strip() or "General"
+            raw_category_val = str(row_dict.get("category") or "").strip()
+            if not raw_category_val or raw_category_val.lower() == "general" or raw_category_val.lower() == "nan":
+                category = product_name if len(product_name) < 35 else "General"
+            else:
+                category = raw_category_val
             payment_method = _normalize_payment_method(row_dict.get("payment_method"))
             sale_date = _parse_pos_date(row_dict.get("date"))
 

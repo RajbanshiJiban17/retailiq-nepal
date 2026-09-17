@@ -76,7 +76,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           onClose();
         }, 800);
       } else {
-        const res = await registerMerchant({
+        await registerMerchant({
           business_name: businessName.trim(),
           pan_vat_number: panVat.trim() || undefined,
           full_name: fullName.trim(),
@@ -84,21 +84,13 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           password,
           phone: phone.trim() || undefined,
         });
-        const userToSave = {
-          ...res.user,
-          business_name: res.user.business_name || businessName.trim(),
-        };
-        localStorage.setItem("retailiq_token", res.access_token);
-        localStorage.setItem("retailiq_user", JSON.stringify(userToSave));
-        window.dispatchEvent(new Event("retailiq_user_updated"));
-        setSuccessMsg("नयाँ पसल सफलतापूर्वक दर्ता भयो! (Registered Successfully)");
-        setTimeout(() => {
-          onSuccess(userToSave);
-          onClose();
-        }, 800);
+        // Redirect/switch directly to Login form so the user logs in manually
+        setIsLogin(true);
+        setPassword("");
+        setSuccessMsg("🎉 नयाँ पसल दर्ता सफल भयो! कृपया आफ्नो पासवर्ड हानेर लगइन गर्नुहोस्। (Registration Successful! Please login)");
       }
     } catch (err: any) {
-      const errMsg =
+      let errMsg =
         typeof err === "string"
           ? err
           : typeof err?.message === "string"
@@ -106,6 +98,10 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           : typeof err?.detail === "string"
           ? err.detail
           : "प्रक्रिया असफल भयो। कृपया आफ्नो विवरण जाँच्नुहोस्।";
+
+      if (errMsg.includes("401") || errMsg.toLowerCase().includes("unauthorized") || errMsg.toLowerCase().includes("incorrect") || errMsg.toLowerCase().includes("credentials")) {
+        errMsg = "इमेल वा पासवर्ड मिलेन (Incorrect email or password)। कृपया सही पासवर्ड प्रविष्ट गर्नुहोस् वा तलको 'डेमो विवरण स्वतः भर्नुहोस्' प्रयोग गर्नुहोस्।";
+      }
       setError(errMsg);
     } finally {
       setLoading(false);

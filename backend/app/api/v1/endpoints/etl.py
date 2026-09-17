@@ -30,11 +30,12 @@ async def upload_pos_csv(
     business_id: uuid.UUID = Form(..., description="Target Tenant Business UUID"),
     db: Optional[AsyncSession] = Depends(get_db),
 ) -> ETLUploadSummary:
-    # 1. Validate file extension
-    if not file.filename or not file.filename.lower().endswith(".csv"):
+    # 1. Validate file extension (supports both CSV and Excel .xlsx/.xls)
+    valid_exts = (".csv", ".xlsx", ".xls")
+    if not file.filename or not any(file.filename.lower().endswith(ext) for ext in valid_exts):
         raise HTTPException(
             status_code=status.HTTP400_BAD_REQUEST,
-            detail="Invalid file format. Only CSV files (.csv) are accepted.",
+            detail="Invalid file format. Only Excel (.xlsx, .xls) and CSV (.csv) files are accepted.",
         )
 
     # 2. Read bytes with size limit guard
@@ -55,16 +56,16 @@ async def upload_pos_csv(
     if len(content) == 0:
         raise HTTPException(
             status_code=status.HTTP400_BAD_REQUEST,
-            detail="Uploaded CSV file is completely empty.",
+            detail="Uploaded file is completely empty.",
         )
 
-    # 3. Transform & Sanitize using Pandas
+    # 3. Transform & Sanitize using Pandas (handles both CSV and Excel spreadsheets)
     try:
-        cleaned_result = POSDataCleaner.sanitize(content)
+        cleaned_result = POSDataCleaner.sanitize(content, filename=file.filename)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"CSV Parsing Error: {str(e)}",
+            detail=f"Spreadsheet/CSV Parsing Error: {str(e)}",
         )
 
     # 4. Load into PostgreSQL (with robust fallback for local dev when PostgreSQL service is offline)
@@ -138,16 +139,19 @@ async def upload_pos_csv(
         p_mode = r.payment_method.value if hasattr(r.payment_method, "value") else str(r.payment_method)
         pay_totals[p_mode] = pay_totals.get(p_mode, 0.0) + float(r.subtotal)
 
-    top_prods = sorted(prod_stats.values(), key=lambda x: x["revenue"], reverse=True)[:6]
+    top_prods = sorted(prod_stats.values(), key=lambda x: x["revenue"], reverse=True)
 
     # Update active inventory catalog so GET /api/v1/items reflects the store's real uploaded items
     try:
         from app.api.v1.endpoints.items import InventoryItem as CatItem, update_catalog_from_etl_records
         dynamic_catalog: list = []
-        for idx, p in enumerate(top_prods):
+        for idx, p in enumerate(top_prods[:25]):
             units = p.get("unitsSold", 50)
             avg_rate = round(p["revenue"] / units, 2) if units > 0 else 100.0
-            stock_units = max(12, int(units * 0.15))
+            # Dynamic stock units: varies based on product sales volume and realistic reorder levels
+            stock_units = max(8, int(units * 1.4) + (35 if idx % 3 == 0 else (12 if idx % 3 == 1 else 48)))
+            p["stockLeft"] = stock_units
+            reorder_val = max(10, int(stock_units * 0.35))
             dynamic_catalog.append(
                 CatItem(
                     id=idx + 1,
@@ -156,7 +160,7 @@ async def upload_pos_csv(
                     category=p.get("category") or "General",
                     quantity=stock_units,
                     price_npr=avg_rate,
-                    reorder_level=max(10, int(stock_units * 0.4)),
+                    reorder_level=reorder_val,
                 )
             )
         if dynamic_catalog:
@@ -188,7 +192,7 @@ async def upload_pos_csv(
         for idx, (k, v) in enumerate(pay_totals.items())
     ]
 
-    return ETLUploadSummary(
+    summary_obj = ETLUploadSummary(
         status="success" if len(cleaned_result.errors) == 0 else "partial",
         business_id=business_id,
         file_name=file.filename,
@@ -206,6 +210,16 @@ async def upload_pos_csv(
         monthly_trend=monthly_trend,
         payment_breakdown=payment_breakdown,
     )
+
+    TENANT_SUMMARIES[str(business_id)] = summary_obj
+    return summary_obj
+
+
+# In-memory tenant summary cache for dynamic RAG and dashboard fallback
+TENANT_SUMMARIES: dict = {}
+
+def get_tenant_etl_summary(business_id: str) -> Optional[ETLUploadSummary]:
+    return TENANT_SUMMARIES.get(str(business_id))
 
 
 @router.get(

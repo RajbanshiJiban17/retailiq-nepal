@@ -51,8 +51,10 @@ export function PosUploadCard({
       return;
     }
 
-    if (!selectedFile.name.toLowerCase().endsWith(".csv")) {
-      setError("कृपया केवल CSV (.csv) फाइल मात्र छान्नुहोस्। (Only CSV files supported)");
+    const fileName = selectedFile.name.toLowerCase();
+    const isAccepted = fileName.endsWith(".csv") || fileName.endsWith(".xlsx") || fileName.endsWith(".xls");
+    if (!isAccepted) {
+      setError("कृपया Excel (.xlsx, .xls) वा CSV (.csv) फाइल मात्र छान्नुहोस्। (Only Excel and CSV supported)");
       setFile(null);
       return;
     }
@@ -91,6 +93,7 @@ export function PosUploadCard({
       setSummary(res);
       // Persist latest ETL summary for dashboard consumption
       try {
+        localStorage.setItem(`retailiq_etl_${effectiveBusinessId}`, JSON.stringify(res));
         localStorage.setItem("retailiq_latest_etl", JSON.stringify(res));
         localStorage.setItem("retailiq_analytics_timestamp", new Date().toISOString());
         window.dispatchEvent(new Event("retailiq_data_updated"));
@@ -115,13 +118,13 @@ export function PosUploadCard({
             </div>
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                पसलको बिक्री डाटा अपलोड (POS / Excel CSV Ingestion)
+                पसलको बिक्री डाटा अपलोड (Excel .xlsx / CSV Ingestion)
                 <span className="text-[11px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-medium border border-emerald-500/30">
                   ETL Pipeline Active
                 </span>
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                IMS, Tally वा Excel बाट निकालिएको दैनिक/मासिक बिलिङ CSV फाइल यहाँ हाल्नुहोस्।
+                IMS, Tally वा Excel (.xlsx, .xls, .csv) बाट निकालिएको बिक्री फाइल यहाँ हाल्नुहोस्।
               </p>
             </div>
           </div>
@@ -189,7 +192,7 @@ export function PosUploadCard({
             <input
               type="file"
               ref={fileInputRef}
-              accept=".csv"
+              accept=".csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
               className="hidden"
               onChange={(e) => e.target.files?.[0] && handleFileChange(e.target.files[0])}
             />
@@ -207,14 +210,14 @@ export function PosUploadCard({
                 ? "🔒 फाइल अपलोड गर्न पहिले लगइन गर्नुहोस् (Click to Sign In)"
                 : file
                 ? file.name
-                : "यहाँ CSV फाइल ड्र्याग गर्नुहोस् वा क्लिक गर्नुहोस् (Drag & Drop or Browse)"}
+                : "यहाँ Excel (.xlsx/.xls) वा CSV फाइल ड्र्याग गर्नुहोस् वा छान्नुहोस्"}
             </p>
             <p className="mt-1 text-xs text-slate-400">
               {!isLoggedIn
                 ? "बिक्री डाटा विश्लेषणका लागि पसलको आधिकारिक खाता आवश्यक पर्दछ"
                 : file
                 ? `साइज: ${(file.size / 1024).toFixed(1)} KB • अपलोड गर्न तयार`
-                : "अधिकतम फाइल साइज: 10MB • नेपाली रुपैयाँ (Rs. / NPR) स्वतः सफा हुन्छ"}
+                : "अधिकतम फाइल साइज: 10MB • Excel तथा CSV दुवै मान्य • नेपाली रुपैयाँ (Rs. / NPR) स्वतः सफा हुन्छ"}
             </p>
           </div>
 

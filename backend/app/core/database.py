@@ -40,35 +40,60 @@ except Exception as err:
     _init_error = err
 
 
+import time
+import socket
+from urllib.parse import urlparse
+
+_db_offline_until: float = 0.0
+
+
+def _is_db_reachable() -> bool:
+    """Lightweight 80ms TCP probe to test if PostgreSQL port is listening before asyncpg binds."""
+    try:
+        url_clean = str(settings.ASYNC_DATABASE_URL).replace("postgresql+asyncpg://", "http://").replace("postgresql://", "http://")
+        parsed = urlparse(url_clean)
+        host = parsed.hostname or "127.0.0.1"
+        port = parsed.port or 5432
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(0.08)
+        s.connect((host, port))
+        s.close()
+        return True
+    except Exception:
+        return False
+
+
 async def get_db() -> AsyncGenerator[Optional[AsyncSession], None]:
     """
     FastAPI dependency that provides an asynchronous database session.
     Automatically commits on success or rolls back on unhandled exceptions.
-    Yields None if database is unreachable (enables offline demo mode).
+    Yields None instantly if database is unreachable (enables seamless offline demo mode).
     """
+    global _db_offline_until
     if AsyncSessionLocal is None:
+        yield None
+        return
+
+    now = time.time()
+    if now < _db_offline_until:
+        # PostgreSQL was recently confirmed offline; yield None immediately with zero latency
+        yield None
+        return
+
+    if not _is_db_reachable():
+        _db_offline_until = time.time() + 30.0  # Cache offline status for 30 seconds
         yield None
         return
 
     session = None
     try:
         session = AsyncSessionLocal()
-        # Test connection ping before yielding to avoid mid-request connection failure
-        await session.connection()
-    except Exception:
-        if session:
-            try:
-                await session.close()
-            except Exception:
-                pass
-        yield None
-        return
-
-    try:
         yield session
         await session.commit()
     except Exception:
-        await session.rollback()
+        if session:
+            await session.rollback()
         raise
     finally:
-        await session.close()
+        if session:
+            await session.close()

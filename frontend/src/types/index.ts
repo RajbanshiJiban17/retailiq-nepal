@@ -87,3 +87,51 @@ export interface ETLUploadSummary {
     nepaliLabel: string;
   }>;
 }
+
+export interface SubscriptionPlan {
+  id: "starter" | "pro" | "enterprise" | string;
+  name: string;
+  name_nepali: string;
+  price_npr: number;
+  billing_cycle?: string;
+  billing_period?: string;
+  description?: string;
+  badge?: string;
+  is_popular?: boolean;
+  features: string[];
+  max_skus?: number;
+  can_upload_excel?: boolean;
+  can_use_ml_forecast?: boolean;
+  can_generate_pdf?: boolean;
+  unlimited_ai_chat?: boolean;
+}
+
+export interface CurrentSubscription {
+  business_id: string;
+  tier: "starter" | "pro" | "enterprise" | string;
+  plan_id?: string;
+  plan_name: string;
+  plan_name_nepali: string;
+  status?: string;
+  price_npr?: number;
+  is_active?: boolean;
+  is_trial?: boolean;
+  trial_days_remaining?: number;
+  is_expired?: boolean;
+  days_remaining?: number;
+  started_at?: string;
+  expires_at?: string;
+  valid_until?: string;
+  payment_channel?: string;
+  transaction_id?: string;
+  billing_cycle?: "monthly" | "yearly" | string;
+  amount_paid_npr?: number;
+  invoice_no?: string;
+  pan_number?: string;
+  features?: string[];
+  can_upload_excel?: boolean;
+  can_use_ml_forecast?: boolean;
+  can_generate_pdf?: boolean;
+  unlimited_ai_chat?: boolean;
+}
+

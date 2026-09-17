@@ -10,8 +10,9 @@ import { BajarSathiWidget } from "@/components/dashboard/BajarSathiWidget";
 import { InventoryRestockAlerts } from "@/components/dashboard/InventoryRestockAlerts";
 import { PosUploadCard } from "@/components/PosUploadCard";
 import { AuthModal } from "@/components/AuthModal";
-import { UserProfile, ETLUploadSummary } from "@/types";
-import { loginUser } from "@/lib/api";
+import { SubscriptionModal } from "@/components/SubscriptionModal";
+import { UserProfile, ETLUploadSummary, CurrentSubscription } from "@/types";
+import { loginUser, fetchCurrentSubscription } from "@/lib/api";
 import {
   Building2,
   FileSpreadsheet,
@@ -28,6 +29,8 @@ import {
   ShieldAlert,
   Loader2,
   ShieldCheck,
+  Crown,
+  CreditCard,
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -40,13 +43,17 @@ export default function DashboardPage() {
   const [etlSummary, setEtlSummary] = useState<ETLUploadSummary | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
+  const [currentSubscription, setCurrentSubscription] = useState<CurrentSubscription | null>(null);
 
-  const loadData = () => {
+  const loadData = async () => {
     // Read current user session
+    let userObj: UserProfile | null = null;
     const savedUser = localStorage.getItem("retailiq_user");
     if (savedUser) {
       try {
-        setCurrentUser(JSON.parse(savedUser));
+        userObj = JSON.parse(savedUser);
+        setCurrentUser(userObj);
       } catch {
         setCurrentUser(null);
       }
@@ -55,14 +62,31 @@ export default function DashboardPage() {
     }
     setAuthChecking(false);
 
-    // Read latest uploaded ETL data
-    const savedEtl = localStorage.getItem("retailiq_latest_etl");
+    // Read tenant-isolated uploaded ETL data first, fallback to retailiq_latest_etl
+    let savedEtl: string | null = null;
+    if (userObj?.business_id) {
+      savedEtl = localStorage.getItem(`retailiq_etl_${userObj.business_id}`);
+    }
+    if (!savedEtl) {
+      savedEtl = localStorage.getItem("retailiq_latest_etl");
+    }
+
     if (savedEtl) {
       try {
         setEtlSummary(JSON.parse(savedEtl));
       } catch {
         // ignore
       }
+    } else {
+      setEtlSummary(null);
+    }
+
+    // Fetch subscription status for this store
+    try {
+      const sub = await fetchCurrentSubscription(userObj?.business_id);
+      setCurrentSubscription(sub);
+    } catch {
+      // ignore
     }
   };
 
@@ -87,9 +111,13 @@ export default function DashboardPage() {
 
   const handleClearUploadedData = () => {
     if (confirm("के तपाईं अपलोड गरिएको डाटा हटाएर डिफल्ट डेमो डाटामा फर्कन चाहनुहुन्छ?")) {
+      if (currentUser?.business_id) {
+        localStorage.removeItem(`retailiq_etl_${currentUser.business_id}`);
+      }
       localStorage.removeItem("retailiq_latest_etl");
       localStorage.removeItem("retailiq_analytics_timestamp");
       setEtlSummary(null);
+      window.dispatchEvent(new Event("retailiq_data_updated"));
     }
   };
 
@@ -318,6 +346,29 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Active Subscription Plan Badge & Upgrade Button */}
+            <button
+              onClick={() => setSubscriptionModalOpen(true)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border shadow-sm ${
+                currentSubscription?.plan_id === "enterprise"
+                  ? "bg-purple-950/70 border-purple-500/50 text-purple-300 hover:bg-purple-900/60 shadow-purple-950/40"
+                  : currentSubscription?.plan_id === "pro"
+                  ? "bg-amber-950/70 border-amber-500/50 text-amber-300 hover:bg-amber-900/60 shadow-amber-950/40"
+                  : "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-850"
+              }`}
+              title="सदस्यता योजना परिवर्तन गर्नुहोस् (Manage Subscription)"
+            >
+              <Crown className="h-3.5 w-3.5 text-amber-400" />
+              <span>
+                {currentSubscription?.plan_id === "enterprise"
+                  ? "इन्टरप्राइज"
+                  : currentSubscription?.plan_id === "pro"
+                  ? "प्रो मर्चन्ट"
+                  : "स्टार्टर"}
+              </span>
+              <span className="text-[10px] text-amber-400/90 font-normal underline ml-0.5">अपग्रेड</span>
+            </button>
+
             {/* Upload Sales CSV Button directly on Dashboard */}
             <button
               onClick={() => setUploadModalOpen(true)}
@@ -461,6 +512,19 @@ export default function DashboardPage() {
               <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs px-2.5 py-0.5 rounded-full font-medium">
                 Tenant: {displayTenantId}
               </span>
+              <button
+                onClick={() => setSubscriptionModalOpen(true)}
+                className={`inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full font-semibold border transition ${
+                  currentSubscription?.plan_id === "enterprise"
+                    ? "bg-purple-500/20 text-purple-300 border-purple-500/40 hover:bg-purple-500/30"
+                    : currentSubscription?.plan_id === "pro"
+                    ? "bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30"
+                    : "bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-750"
+                }`}
+              >
+                <Crown className="h-3 w-3 text-amber-400" />
+                {currentSubscription?.plan_name || "स्टार्टर निःशुल्क (Starter)"} • योजना हेर्नुहोस्
+              </button>
             </div>
             <p className="text-xs sm:text-sm text-slate-400 mt-1">
               Real-time cash flow, inventory forecasting, and Nepali business intelligence overview.
@@ -538,6 +602,18 @@ export default function DashboardPage() {
         onClose={() => setAuthModalOpen(false)}
         onSuccess={(user) => {
           setCurrentUser(user);
+        }}
+      />
+
+      {/* SaaS Subscription Modal */}
+      <SubscriptionModal
+        isOpen={subscriptionModalOpen}
+        onClose={() => setSubscriptionModalOpen(false)}
+        businessId={currentUser?.business_id}
+        storeName={displayStoreName}
+        currentPlanId={currentSubscription?.plan_id || currentSubscription?.tier}
+        onPlanUpgraded={(newSub: CurrentSubscription) => {
+          setCurrentSubscription(newSub);
         }}
       />
 

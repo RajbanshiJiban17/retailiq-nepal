@@ -5,8 +5,9 @@ import Link from "next/link";
 import { HealthStatus } from "@/components/HealthStatus";
 import { AuthModal } from "@/components/AuthModal";
 import { PosUploadCard } from "@/components/PosUploadCard";
-import { fetchInventoryItems, API_BASE_URL } from "@/lib/api";
-import { InventoryItem, UserProfile } from "@/types";
+import { SubscriptionModal } from "@/components/SubscriptionModal";
+import { fetchInventoryItems, fetchCurrentSubscription, API_BASE_URL } from "@/lib/api";
+import { InventoryItem, UserProfile, CurrentSubscription } from "@/types";
 import {
   Boxes,
   ExternalLink,
@@ -26,6 +27,7 @@ import {
   FileText,
   ShieldCheck,
   ArrowRight,
+  Crown,
 } from "lucide-react";
 
 export default function HomePage() {
@@ -38,12 +40,28 @@ export default function HomePage() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
 
+  // Subscription State
+  const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
+  const [currentSubscription, setCurrentSubscription] = useState<CurrentSubscription | null>(null);
+
   const loadItems = async () => {
     setLoadingItems(true);
     setItemsError(null);
 
+    const savedUserStr = localStorage.getItem("retailiq_user");
+    const savedUser = savedUserStr ? JSON.parse(savedUserStr) : null;
+    const bizId = savedUser?.business_id;
+
+    // Read tenant-isolated uploaded ETL data first, fallback to retailiq_latest_etl
     let etlData: any = null;
-    const savedEtl = localStorage.getItem("retailiq_latest_etl");
+    let savedEtl: string | null = null;
+    if (bizId) {
+      savedEtl = localStorage.getItem(`retailiq_etl_${bizId}`);
+    }
+    if (!savedEtl) {
+      savedEtl = localStorage.getItem("retailiq_latest_etl");
+    }
+
     if (savedEtl) {
       try {
         etlData = JSON.parse(savedEtl);
@@ -57,6 +75,14 @@ export default function HomePage() {
       setActiveFileName(null);
     }
 
+    // Fetch subscription
+    try {
+      const sub = await fetchCurrentSubscription(bizId);
+      setCurrentSubscription(sub);
+    } catch {
+      // ignore
+    }
+
     try {
       const savedUserStr = localStorage.getItem("retailiq_user");
       const savedUser = savedUserStr ? JSON.parse(savedUserStr) : null;
@@ -64,12 +90,13 @@ export default function HomePage() {
 
       const data = await fetchInventoryItems(bizId);
 
-      // If user uploaded a CSV with products, prioritize displaying the store's uploaded items
+      // If user uploaded a CSV/Excel with products, prioritize displaying the store's uploaded items
       if (etlData?.top_products && etlData.top_products.length > 0) {
         const derived: InventoryItem[] = etlData.top_products.map((p: any, idx: number) => {
           const units = p.unitsSold || 50;
           const avgPrice = units > 0 ? parseFloat((p.revenue / units).toFixed(2)) : 100.0;
-          const stock = idx === 0 ? 18 : idx === 1 ? 24 : idx === 2 ? 45 : 30;
+          const stock = p.stockLeft || Math.max(8, Math.round(units * 1.4) + (idx % 3 === 0 ? 35 : idx % 3 === 1 ? 14 : 48));
+          const reorder = Math.max(10, Math.round(stock * 0.35));
           return {
             id: idx + 1,
             sku: p.sku || `ITEM-${idx + 1}`,
@@ -77,7 +104,7 @@ export default function HomePage() {
             category: p.category || "General",
             price_npr: avgPrice,
             quantity: stock,
-            reorder_level: idx === 0 ? 25 : 20,
+            reorder_level: reorder,
           };
         });
         setItems(derived);
@@ -86,15 +113,20 @@ export default function HomePage() {
       }
     } catch (err: any) {
       if (etlData?.top_products && etlData.top_products.length > 0) {
-        const derived: InventoryItem[] = etlData.top_products.map((p: any, idx: number) => ({
-          id: idx + 1,
-          sku: p.sku || `ITEM-${idx + 1}`,
-          name: p.name,
-          category: p.category || "General",
-          price_npr: p.unitsSold > 0 ? parseFloat((p.revenue / p.unitsSold).toFixed(2)) : 100.0,
-          quantity: idx === 0 ? 18 : idx === 1 ? 24 : 45,
-          reorder_level: 20,
-        }));
+        const derived: InventoryItem[] = etlData.top_products.map((p: any, idx: number) => {
+          const units = p.unitsSold || 50;
+          const avgPrice = units > 0 ? parseFloat((p.revenue / units).toFixed(2)) : 100.0;
+          const stock = p.stockLeft || Math.max(8, Math.round(units * 1.4) + (idx % 3 === 0 ? 35 : idx % 3 === 1 ? 14 : 48));
+          return {
+            id: idx + 1,
+            sku: p.sku || `ITEM-${idx + 1}`,
+            name: p.name,
+            category: p.category || "General",
+            price_npr: avgPrice,
+            quantity: stock,
+            reorder_level: Math.max(10, Math.round(stock * 0.35)),
+          };
+        });
         setItems(derived);
       } else {
         setItemsError(err.message || "Failed to load inventory items");
@@ -157,6 +189,28 @@ export default function HomePage() {
           </div>
 
           <div className="flex items-center gap-2.5 sm:gap-3">
+            {/* SaaS Subscription Plans Button */}
+            <button
+              onClick={() => setSubscriptionModalOpen(true)}
+              className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition shadow-sm ${
+                currentSubscription?.plan_id === "enterprise"
+                  ? "bg-purple-950/60 border-purple-500/50 text-purple-300 hover:bg-purple-900/60"
+                  : currentSubscription?.plan_id === "pro"
+                  ? "bg-amber-950/60 border-amber-500/50 text-amber-300 hover:bg-amber-900/60"
+                  : "bg-slate-900 border-amber-500/40 text-amber-300 hover:bg-amber-950/40"
+              }`}
+              title="SaaS सदस्यता योजनाहरू हेर्नुहोस् (Subscription Plans)"
+            >
+              <Crown className="h-3.5 w-3.5 text-amber-400" />
+              <span className="hidden xs:inline">
+                {currentSubscription?.plan_id === "enterprise"
+                  ? "इन्टरप्राइज"
+                  : currentSubscription?.plan_id === "pro"
+                  ? "प्रो मर्चन्ट"
+                  : "💰 योजना (Plans)"}
+              </span>
+            </button>
+
             {currentUser ? (
               <div className="flex items-center gap-2 rounded-xl bg-slate-900 border border-slate-800 px-3 py-1.5 text-xs">
                 <Building2 className="h-4 w-4 text-emerald-400" />
@@ -309,7 +363,7 @@ export default function HomePage() {
                 </h2>
                 {activeFileName && (
                   <span className="text-[11px] bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full font-medium border border-emerald-500/30">
-                    Active File: {activeFileName}
+                    Active File: {activeFileName} ({items.length} सामानहरू)
                   </span>
                 )}
               </div>
@@ -321,9 +375,14 @@ export default function HomePage() {
               {activeFileName && (
                 <button
                   onClick={() => {
+                    if (currentUser?.business_id) {
+                      localStorage.removeItem(`retailiq_etl_${currentUser.business_id}`);
+                    }
                     localStorage.removeItem("retailiq_latest_etl");
+                    localStorage.removeItem("retailiq_analytics_timestamp");
                     setActiveFileName(null);
                     loadItems();
+                    window.dispatchEvent(new Event("retailiq_data_updated"));
                   }}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-slate-850 hover:bg-slate-800 border border-slate-700 px-3 py-2 text-xs text-slate-400 hover:text-slate-200 transition"
                   title="Reset to default starter items"
@@ -393,14 +452,19 @@ export default function HomePage() {
                             {item.quantity} units
                           </td>
                           <td className="px-4 py-3 text-center">
-                            {isLowStock ? (
+                            {item.quantity === 0 ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-rose-950/40 border border-rose-800/50 px-2.5 py-0.5 text-xs font-medium text-rose-300">
+                                <AlertTriangle className="h-3 w-3" />
+                                स्टक सकियो
+                              </span>
+                            ) : isLowStock ? (
                               <span className="inline-flex items-center gap-1 rounded-full bg-amber-950/40 border border-amber-800/50 px-2.5 py-0.5 text-xs font-medium text-amber-300">
                                 <AlertTriangle className="h-3 w-3" />
-                                Reorder Soon
+                                न्यून स्टक ({item.quantity})
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-950/40 border border-emerald-800/50 px-2.5 py-0.5 text-xs font-medium text-emerald-300">
-                                In Stock
+                                उपलब्ध ({item.quantity})
                               </span>
                             )}
                           </td>
@@ -421,6 +485,18 @@ export default function HomePage() {
         onClose={() => setAuthModalOpen(false)}
         onSuccess={(user) => {
           setCurrentUser(user);
+        }}
+      />
+
+      {/* SaaS Subscription Modal */}
+      <SubscriptionModal
+        isOpen={subscriptionModalOpen}
+        onClose={() => setSubscriptionModalOpen(false)}
+        businessId={currentUser?.business_id}
+        storeName={currentUser?.business_name || currentUser?.full_name}
+        currentPlanId={currentSubscription?.plan_id || currentSubscription?.tier}
+        onPlanUpgraded={(newSub: CurrentSubscription) => {
+          setCurrentSubscription(newSub);
         }}
       />
 
