@@ -16,6 +16,15 @@ from app import __version__
 async def lifespan(app: FastAPI):
     # Startup tasks (e.g. init DB connection pool, cache)
     print(f"Starting {settings.PROJECT_NAME} (v{__version__}) in {settings.ENVIRONMENT} mode...")
+    try:
+        from app.core.database import engine
+        from app.models import Base
+        if engine:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            print("[DB] All database tables verified and created successfully.")
+    except Exception as e:
+        print(f"[DB WARN] Database table auto-init skipped: {e}")
     yield
     # Shutdown tasks
     print(f"Gracefully shutting down {settings.PROJECT_NAME}...")
