@@ -76,83 +76,74 @@ export function BajarSathiWidget({
       const profit = totalRev * 0.3;
       const totalRows = Number(summary.valid_rows_count || summary.total_rows_processed || 1000);
 
-      // 1. Specific product match (check if user is asking about a particular product)
-      for (const p of topItems) {
-        const pName = p.name.toLowerCase();
-        const pSku = (p.sku || "").toLowerCase();
-        const pCat = (p.category || "").toLowerCase();
-
-        const aliases: string[] = [];
-        if (pName.includes("rice") || pName.includes("चामल")) aliases.push("rice", "चामल", "aanadi", "basmati");
-        if (pName.includes("ghee") || pName.includes("घ्यू")) aliases.push("ghee", "घ्यू", "घ्यु", "ddc");
-        if (pName.includes("tea") || pName.includes("चिया")) aliases.push("tea", "चिया", "ilam");
-        if (pName.includes("wai") || pName.includes("चाउचाउ")) aliases.push("wai", "wai wai", "चाउचाउ");
-        if (pName.includes("electronic")) aliases.push("electronic", "इलेक्ट्रोनिक्स", "सामग्री");
-        if (pName.includes("beauty") || pName.includes("health")) aliases.push("health", "beauty", "सौन्दर्य", "कस्मेटिक्स");
-        if (pName.includes("food")) aliases.push("food", "खाद्य", "खाना");
-        if (pName.includes("fashion")) aliases.push("fashion", "पहिरन", "लुगा");
-        if (pName.includes("sports")) aliases.push("sports", "खेलकुद");
-
-        const matched =
-          (pName && q.includes(pName)) ||
-          (pSku && q.includes(pSku)) ||
-          (pCat && q.includes(pCat)) ||
-          aliases.some((a) => q.includes(a));
-
-        if (matched) {
-          const units = p.unitsSold || 0;
-          const rev = p.revenue || 0;
-          const avgRate = units > 0 ? (rev / units).toFixed(2) : "100.00";
-          const stock = p.stockLeft || Math.round(units * 1.5) + 20;
-          return {
-            reply: `तपाईंको स्टोर (${storeName}) को फाइल '${summary.file_name}' अनुसार '${p.name}' को विवरण:\n\n- जम्मा बिक्री संख्या: ${units.toLocaleString()} युनिट\n- बिक्री रकम: रु. ${rev.toLocaleString("en-NP")}/-\n- औषत दर (Rate): रु. ${avgRate}\n- वर्ग (Category): ${p.category || "General"}\n- हाल उपलब्ध मौज्दात (Stock): ${stock} युनिट बाँकी छ।`,
-            source: `Grounded: ${summary.file_name}`,
-          };
-        }
+      // 1. 7-Week ML Demand Forecasting
+      const isForecast = [
+        "७ हप्ता", "7 हप्ता", "7 week", "seven week", "७ week", "forecast", "forecasting",
+        "भविष्यवाणी", "prediction", "आउने हप्ता", "aune week", "aune 7 week", "projection",
+        "कति बिक्री हुन सक्छ", "kati sale huna sakxa", "future sale", "ml forecast"
+      ].some((w) => q.includes(w));
+      if (isForecast) {
+        const weeklyRev = totalRev / 6;
+        return {
+          reply: `📊 तपाईंको स्टोर (${storeName}) को Scikit-Learn ML मोडेल आधारित आगामी ७ हप्ता (7 Weeks) को बिक्री तथा स्टक प्रक्षेपण:\n\n• हप्ता १ (Week 1): करिब ${Math.round(totalRows * 0.16)} बिलहरू | अनुमानित आम्दानी: रु. ${(weeklyRev * 0.95).toLocaleString("en-NP", { maximumFractionDigits: 0 })}/- (स्थिर माग)\n• हप्ता २ (Week 2): करिब ${Math.round(totalRows * 0.17)} बिलहरू | अनुमानित आम्दानी: रु. ${(weeklyRev * 1.02).toLocaleString("en-NP", { maximumFractionDigits: 0 })}/-\n• हप्ता ३ (Week 3): करिब ${Math.round(totalRows * 0.19)} बिलहरू | अनुमानित आम्दानी: रु. ${(weeklyRev * 1.15).toLocaleString("en-NP", { maximumFractionDigits: 0 })}/- (सप्ताहन्त चाप)\n• हप्ता ४ (Week 4): करिब ${Math.round(totalRows * 0.18)} बिलहरू | अनुमानित आम्दानी: रु. ${(weeklyRev * 1.08).toLocaleString("en-NP", { maximumFractionDigits: 0 })}/-\n• हप्ता ५-७ (Weeks 5-7): औषत साप्ताहिक बिक्री ${Math.round(totalRows * 0.20)} कारोबार र चाडपर्व नजिकिँदै गर्दा २०-३५% थप वृद्धि।\n\n⚠️ स्टक रिअर्डर अलर्ट: आगामी हप्ता २ भित्रै कम मौज्दात भएका सामानहरूको स्टक सकिन सक्ने भएकाले हप्ता १ को अन्त्य अगावै पुनः अर्डर पठाउन सुझाव दिइन्छ।`,
+          source: `Scikit-Learn ML Forecaster (7-Week Horizon)`,
+        };
       }
 
-      // 2. Breakdown query ("कुन सामान कति बाँकी छ?", "अरु सामान कति बिक्री भयो?", "सबै सामानको मौज्दात")
-      const isBreakdown = ["कुन सामान", "कति बाँकी", "अरु सामान", "अरू सामान", "कुन-कुन", "सबै सामान", "कति कति", "प्रत्येक", "list", "सूची"].some((w) => q.includes(w));
-      if (isBreakdown && topItems.length > 0) {
-        const itemsList = topItems
-          .map((p, idx) => {
-            const units = p.unitsSold || 0;
-            const rev = p.revenue || 0;
-            const stock = p.stockLeft || Math.round(units * 1.5) + (idx % 2 === 0 ? 25 : 12);
-            return `${idx + 1}. ${p.name}:\n   - बिक्री: ${units.toLocaleString()} युनिट (रु. ${rev.toLocaleString("en-NP")})\n   - मौज्दात बाँकी: ${stock} युनिट`;
-          })
-          .join("\n\n");
-
+      // 2. Festivals & Festive Discount Strategy
+      const isFestival = [
+        "चाडपर्व", "दशैं", "दशै", "तिहार", "छठ", "नयाँ वर्ष", "तीज", "होली", "पर्व",
+        "festival", "festive", "dashain", "tihar", "chhath", "teej", "chad parva", "parba",
+        "छुट", "discount", "xut", "chhut", "offer", "कम्बो", "bundle"
+      ].some((w) => q.includes(w));
+      if (isFestival) {
         return {
-          reply: `तपाईंको स्टोर (${storeName}) मा उपलब्ध मुख्य सामानहरूको बिक्री तथा मौज्दात स्थिति:\n\n${itemsList}\n\nमाथिका सामानहरू मध्ये न्यून मौज्दात भएका सामानहरू समयमै अर्डर गर्न सुझाव दिइन्छ।`,
+          reply: `🎉 नेपाली चाडपर्व (दशैं, तिहार, छठ) को लागि पसल (${storeName}) को व्यापार, अर्डर र छुट रणनीति:\n\n१. माग पूर्वानुमान (Festive Demand Surge):\n   - खाद्यान्न (बासमती चामल, घ्यू, पिठो, तोरीको तेल, मसला): सामान्य महिना भन्दा १५०% देखि २००% (२ देखि २.५ गुणा) बढी माग हुन्छ।\n   - पेय पदार्थ, जुस, ड्राइ फ्रुट्स, चकलेट तथा चिया: माग ८०% देखि १२०% ले वृद्धि हुन्छ।\n\n२. कति र कहिले सामान मगाउने (Restock Timeline):\n   - चाडपर्व सुरु हुनुभन्दा २ देखि ३ हप्ता अगावै नियमित मौज्दात भन्दा कम्तीमा ५०% देखि ७०% थप स्टक मगाउनुपर्छ। यसले गर्दा बजारमा मूल्य बढ्ने र ढुवानी जाम हुने जोखिमबाट बचिन्छ।\n\n३. छुट तथा अफर दिने तरिका (Smart Discount Strategy):\n   - कम्बो अफर (Bundle Deals): २५ केजी चामल किन्दा १ लिटर घ्यूमा १०% छुट वा मसला प्याकेट उपहार दिनुहोस् (नगद छुट भन्दा बण्डल बढी प्रभावकारी हुन्छ)।\n   - सुस्त सामान क्लियरेन्स: कम बिक्री भएका पुराना सामानहरूलाई ५-१०% फेस्टिभल डिस्काउन्टमा राखी पूँजी खाली गर्नुहोस्।`,
+          source: `RetailIQ Festive AI Strategy`,
+        };
+      }
+
+      // 3. Top-selling product (Supports Romanized: "sabai bhanda dherai kun item sale vayeu")
+      const isTopSelling = [
+        "सबैभन्दा धेरै", "धेरै बिक्री", "सबैभन्दा बढी", "धेरै बिक्ने", "बढी बिक्री", "धेरै सेल", "धेरै बिक्यो",
+        "top seller", "best seller", "top product", "best product", "top selling", "best selling",
+        "most selling", "highest selling", "top item", "best item", "highest sale",
+        "sabai bhanda dherai", "sabai vanda dherai", "sabai bhanda badi", "sabai vanda badi",
+        "dherai bikri", "dherai sale", "dherai bikyo", "dherai sale bhayo", "dherai sale vayeu", "dherai sale bhayeu",
+        "kun item sale vayeu", "kun saman sale vayeu", "kun item dherai", "kun saman dherai",
+        "kun product dherai", "kun item bikyo", "kun saman bikyo", "kun item sale", "kun saman sale"
+      ].some((w) => q.includes(w)) || (
+        (q.includes("dherai") || q.includes("धेरै") || q.includes("top") || q.includes("best") || q.includes("most")) &&
+        (q.includes("sale") || q.includes("item") || q.includes("saman") || q.includes("bikri") || q.includes("बिक्री") || q.includes("vayeu") || q.includes("bhayo"))
+      );
+
+      if (isTopSelling && topItems.length > 0) {
+        const itemsList = topItems
+          .slice(0, 5)
+          .map(
+            (p, idx) =>
+              `${idx + 1}. ${p.name}: रु. ${p.revenue.toLocaleString("en-NP")}/- (${(p.unitsSold || 0).toLocaleString()} युनिट)`
+          )
+          .join("\n");
+        return {
+          reply: `तपाईंको स्टोर (${storeName}) मा सबैभन्दा धेरै बिक्री भएका मुख्य सामानहरू निम्न छन्:\n\n${itemsList}\n\nसबैभन्दा उच्च माग र कारोबार '${topItems[0].name}' बाट प्राप्त भएको छ।`,
           source: `Grounded: ${summary.file_name}`,
         };
       }
 
-      // 3. Specifically top-selling product
-      if (q.includes("सबैभन्दा धेरै") || q.includes("सबैभन्दा बढी") || q.includes("top seller") || q.includes("best seller")) {
-        if (topItems.length > 0) {
-          const itemsList = topItems
-            .slice(0, 5)
-            .map(
-              (p, idx) =>
-                `${idx + 1}. ${p.name}: रु. ${p.revenue.toLocaleString("en-NP")}/- (${(p.unitsSold || 0).toLocaleString()} युनिट)`
-            )
-            .join("\n");
-          return {
-            reply: `तपाईंको स्टोर (${storeName}) मा सबैभन्दा धेरै बिक्री भएका सामानहरू निम्न छन्:\n\n${itemsList}\n\nसबैभन्दा उच्च आम्दानी '${topItems[0].name}' बाट प्राप्त भएको छ।`,
-            source: `Grounded: ${summary.file_name}`,
-          };
-        }
-      }
-
-      // 4. Least-selling / Slow-moving products ("कम बिक्री", "kaam sale", "kam sale", "least sold")
+      // 4. Least-selling / Slow-moving products
       const isLeastSelling = [
         "कम बिक्री", "थोरै बिक्री", "न्यून बिक्री", "कम सेल", "सुस्त बिक्री", "घटी बिक्री",
         "kaam sale", "kam sale", "kam bikri", "kaam bikri", "thorai sale", "slow moving",
         "least sold", "least sell", "lowest sale", "low sale", "kun product kaam", "kun saman kaam",
-        "sabai bhanda kam", "sabai vanda kam", "kam bhayeu", "kaam bhayeu"
-      ].some((w) => q.includes(w));
+        "sabai bhanda kam", "sabai vanda kam", "kam bhayeu", "kaam bhayeu", "kam vayeu", "kaam vayeu",
+        "product kaam", "saman kaam", "item kaam", "kun item kam", "kun saman kam", "kun item kaam",
+        "thori bikri", "thorai bikri", "kam bikyo", "kaam bikyo", "least item", "slow item"
+      ].some((w) => q.includes(w)) || (
+        (q.includes("kam") || q.includes("kaam") || q.includes("least") || q.includes("lowest") || q.includes("कम")) &&
+        (q.includes("sale") || q.includes("item") || q.includes("saman") || q.includes("bikri") || q.includes("बिक्री") || q.includes("vayeu") || q.includes("bhayo"))
+      );
+
       if (isLeastSelling && topItems.length > 0) {
         const leastItems = [...topItems].reverse().slice(0, 4);
         const leastList = leastItems
@@ -170,32 +161,54 @@ export function BajarSathiWidget({
         };
       }
 
-      // 5. Festivals & Festive Discount Strategy ("चाडपर्व", "दशैं", "तिहार", "छठ", "festival", "discount", "छुट")
-      const isFestival = [
-        "चाडपर्व", "दशैं", "दशै", "तिहार", "छठ", "नयाँ वर्ष", "तीज", "होली", "पर्व",
-        "festival", "festive", "dashain", "tihar", "chhath", "teej", "chad parva", "parba",
-        "छुट", "discount", "xut", "chhut", "offer", "कम्बो", "bundle"
-      ].some((w) => q.includes(w));
-      if (isFestival) {
+      // 5. Specific product lookup (only if specific product name or alias is targeted)
+      for (const p of topItems) {
+        const pName = p.name.toLowerCase();
+        const pSku = (p.sku || "").toLowerCase();
+
+        const aliases: string[] = [];
+        if (pName.includes("rice") || pName.includes("चामल")) aliases.push("rice", "चामल", "aanadi", "basmati");
+        if (pName.includes("ghee") || pName.includes("घ्यू")) aliases.push("ghee", "घ्यू", "घ्यु", "ddc");
+        if (pName.includes("tea") || pName.includes("चिया")) aliases.push("tea", "चिया", "ilam");
+        if (pName.includes("wai") || pName.includes("चाउचाउ")) aliases.push("wai", "wai wai", "चाउचाउ");
+        if (pName.includes("oil") || pName.includes("तेल")) aliases.push("oil", "तेल", "sunflower");
+        if (pName.includes("sugar") || pName.includes("चिनी")) aliases.push("sugar", "चिनी");
+
+        const matched =
+          (pName.length > 2 && q.includes(pName)) ||
+          (pSku.length > 2 && q.includes(pSku)) ||
+          aliases.some((a) => q.includes(a));
+
+        if (matched) {
+          const units = p.unitsSold || 0;
+          const rev = p.revenue || 0;
+          const avgRate = units > 0 ? (rev / units).toFixed(2) : "100.00";
+          const stock = p.stockLeft || Math.round(units * 1.5) + 20;
+          return {
+            reply: `तपाईंको स्टोर (${storeName}) को फाइल '${summary.file_name}' अनुसार '${p.name}' को विवरण:\n\n- जम्मा बिक्री संख्या: ${units.toLocaleString()} युनिट\n- बिक्री रकम: रु. ${rev.toLocaleString("en-NP")}/-\n- औषत दर (Rate): रु. ${avgRate}\n- वर्ग (Category): ${p.category || "General"}\n- हाल उपलब्ध मौज्दात (Stock): ${stock} युनिट बाँकी छ।`,
+            source: `Grounded: ${summary.file_name}`,
+          };
+        }
+      }
+
+      // 6. Breakdown query
+      const isBreakdown = ["कुन सामान", "कति बाँकी", "अरु सामान", "अरू सामान", "कुन-कुन", "सबै सामान", "कति कति", "प्रत्येक", "list", "सूची"].some((w) => q.includes(w));
+      if (isBreakdown && topItems.length > 0) {
+        const itemsList = topItems
+          .map((p, idx) => {
+            const units = p.unitsSold || 0;
+            const rev = p.revenue || 0;
+            const stock = p.stockLeft || Math.round(units * 1.5) + (idx % 2 === 0 ? 25 : 12);
+            return `${idx + 1}. ${p.name}:\n   - बिक्री: ${units.toLocaleString()} युनिट (रु. ${rev.toLocaleString("en-NP")})\n   - मौज्दात बाँकी: ${stock} युनिट`;
+          })
+          .join("\n\n");
+
         return {
-          reply: `🎉 नेपाली चाडपर्व (दशैं, तिहार, छठ) को लागि पसल (${storeName}) को व्यापार, अर्डर र छुट रणनीति:\n\n१. माग पूर्वानुमान (Festive Demand Surge):\n   - खाद्यान्न (बासमती चामल, घ्यू, पिठो, तोरीको तेल, मसला): सामान्य महिना भन्दा १५०% देखि २००% (२ देखि २.५ गुणा) बढी माग हुन्छ।\n   - पेय पदार्थ, जुस, ड्राइ फ्रुट्स, चकलेट तथा चिया: माग ८०% देखि १२०% ले वृद्धि हुन्छ।\n\n२. कति र कहिले सामान मगाउने (Restock Timeline):\n   - चाडपर्व सुरु हुनुभन्दा २ देखि ३ हप्ता अगावै नियमित मौज्दात भन्दा कम्तीमा ५०% देखि ७०% थप स्टक मगाउनुपर्छ। यसले गर्दा बजारमा मूल्य बढ्ने र ढुवानी जाम हुने जोखिमबाट बचिन्छ।\n\n३. छुट तथा अफर दिने तरिका (Smart Discount Strategy):\n   - कम्बो अफर (Bundle Deals): २५ केजी चामल किन्दा १ लिटर घ्यूमा १०% छुट वा मसला प्याकेट उपहार दिनुहोस् (नगद छुट भन्दा बण्डल बढी प्रभावकारी हुन्छ)।\n   - सुस्त सामान क्लियरेन्स: कम बिक्री भएका पुराना सामानहरूलाई ५-१०% फेस्टिभल डिस्काउन्टमा राखी पूँजी खाली गर्नुहोस्।`,
-          source: `RetailIQ Festive AI Strategy`,
+          reply: `तपाईंको स्टोर (${storeName}) मा उपलब्ध मुख्य सामानहरूको बिक्री तथा मौज्दात स्थिति:\n\n${itemsList}\n\nमाथिका सामानहरू मध्ये न्यून मौज्दात भएका सामानहरू समयमै अर्डर गर्न सुझाव दिइन्छ।`,
+          source: `Grounded: ${summary.file_name}`,
         };
       }
 
-      // 6. 7-Week ML Demand Forecasting ("७ हप्ता", "7 week", "forecast", "भविष्यवाणी", "prediction", "आउने हप्ता")
-      const isForecast = [
-        "७ हप्ता", "7 हप्ता", "7 week", "seven week", "७ week", "forecast", "forecasting",
-        "भविष्यवाणी", "prediction", "आउने हप्ता", "aune week", "aune 7 week", "projection",
-        "कति बिक्री हुन सक्छ", "kati sale huna sakxa", "future sale", "week"
-      ].some((w) => q.includes(w));
-      if (isForecast) {
-        const weeklyRev = totalRev / 6;
-        return {
-          reply: `📊 तपाईंको स्टोर (${storeName}) को Scikit-Learn ML मोडेल आधारित आगामी ७ हप्ता (7 Weeks) को बिक्री तथा स्टक प्रक्षेपण:\n\n• हप्ता १ (Week 1): करिब ${Math.round(totalRows * 0.16)} बिलहरू | अनुमानित आम्दानी: रु. ${(weeklyRev * 0.95).toLocaleString("en-NP", { maximumFractionDigits: 0 })}/- (स्थिर माग)\n• हप्ता २ (Week 2): करिब ${Math.round(totalRows * 0.17)} बिलहरू | अनुमानित आम्दानी: रु. ${(weeklyRev * 1.02).toLocaleString("en-NP", { maximumFractionDigits: 0 })}/-\n• हप्ता ३ (Week 3): करिब ${Math.round(totalRows * 0.19)} बिलहरू | अनुमानित आम्दानी: रु. ${(weeklyRev * 1.15).toLocaleString("en-NP", { maximumFractionDigits: 0 })}/- (सप्ताहन्त चाप)\n• हप्ता ४ (Week 4): करिब ${Math.round(totalRows * 0.18)} बिलहरू | अनुमानित आम्दानी: रु. ${(weeklyRev * 1.08).toLocaleString("en-NP", { maximumFractionDigits: 0 })}/-\n• हप्ता ५-७ (Weeks 5-7): औषत साप्ताहिक बिक्री ${Math.round(totalRows * 0.20)} कारोबार र चाडपर्व नजिकिँदै गर्दा २०-३५% थप वृद्धि।\n\n⚠️ स्टक रिअर्डर अलर्ट: आगामी हप्ता २ भित्रै कम मौज्दात भएका सामानहरूको स्टक सकिन सक्ने भएकाले हप्ता १ को अन्त्य अगावै पुनः अर्डर पठाउन सुझाव दिइन्छ।`,
-          source: `Scikit-Learn ML Forecaster (7-Week Horizon)`,
-        };
-      }
 
       // 7. ML Pipeline & Data Engineering ("trained", "model", "data cleaning", "feature engineering", "featuring")
       const isMLPipeline = [

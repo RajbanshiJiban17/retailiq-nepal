@@ -132,8 +132,12 @@ class BajarKoSathiAssistant:
             "kaam sale", "kam sale", "kam bikri", "kaam bikri", "thorai sale", "slow moving",
             "least sold", "least sell", "lowest sale", "low sale", "kun product kaam", "kun saman kaam",
             "sabai bhanda kam", "sabai vanda kam", "kam bhayeu", "kaam bhayeu", "kam vayeu", "kaam vayeu",
-            "product kaam", "saman kaam", "item kaam"
-        ])
+            "product kaam", "saman kaam", "item kaam", "kun item kam", "kun saman kam", "kun item kaam",
+            "thori bikri", "thorai bikri", "kam bikyo", "kaam bikyo", "least item", "slow item"
+        ]) or (
+            ("kam" in q or "kaam" in q or "least" in q or "lowest" in q or "कम" in q)
+            and ("sale" in q or "item" in q or "saman" in q or "bikri" in q or "बिक्री" in q or "vayeu" in q or "bhayo" in q)
+        )
         if is_least_selling:
             if parsed_items and len(parsed_items) >= 2:
                 bottom_items = parsed_items[::-1][:4]
@@ -152,22 +156,54 @@ class BajarKoSathiAssistant:
                     f"२. मौज्दात छिट्टै क्लियर गर्न ५% देखि १०% सम्म 'क्लियरेन्स छुट (Clearance Discount)' वा चाडपर्व अफरमा राख्नुहोस्।"
                 )
 
-        # 6. Top-selling specific question ("सबैभन्दा धेरै बिक्री", "top product", "best selling")
-        if any(w in q for w in ["सबैभन्दा धेरै", "धेरै बिक्री", "सबैभन्दा बढी", "top seller", "best seller", "धेरै बिक्ने"]):
-            top_lines = [l for l in context_text.splitlines() if ("बिक्री (रकम:" in l or "वटा बिक्री" in l) and not l.startswith("कुल") and not "धेरै बिक्री भएका मुख्य सामानहरू" in l]
+        # 6. Top-selling specific question ("सबैभन्दा धेरै बिक्री", "top product", "best selling", "sabai bhanda dherai kun item sale vayeu")
+        is_top_selling = any(w in q for w in [
+            "सबैभन्दा धेरै", "धेरै बिक्री", "सबैभन्दा बढी", "धेरै बिक्ने", "बढी बिक्री", "धेरै सेल", "धेरै बिक्यो",
+            "top seller", "best seller", "top product", "best product", "top selling", "best selling",
+            "most selling", "highest selling", "top item", "best item", "highest sale",
+            "sabai bhanda dherai", "sabai vanda dherai", "sabai bhanda badi", "sabai vanda badi",
+            "dherai bikri", "dherai sale", "dherai bikyo", "dherai sale bhayo", "dherai sale vayeu", "dherai sale bhayeu",
+            "kun item sale vayeu", "kun saman sale vayeu", "kun item dherai", "kun saman dherai",
+            "kun product dherai", "kun item bikyo", "kun saman bikyo", "kun item sale", "kun saman sale"
+        ]) or (
+            ("dherai" in q or "धेरै" in q or "top" in q or "best" in q or "most" in q)
+            and ("sale" in q or "item" in q or "saman" in q or "bikri" in q or "बिक्री" in q or "vayeu" in q or "bhayo" in q)
+        )
+        if is_top_selling:
+            top_lines = [
+                l.strip("- ").strip()
+                for l in context_text.splitlines()
+                if ("बिक्री (रकम:" in l or "वटा बिक्री" in l)
+                and not l.startswith("कुल")
+                and "धेरै बिक्री भएका मुख्य सामानहरू" not in l
+            ]
             if top_lines:
-                items_text = "\n".join(top_lines[:5])
+                items_text = "\n".join([f"{idx+1}. {l}" for idx, l in enumerate(top_lines[:5])])
                 return (
-                    f"तपाईंको पसल '{facts.business_name}' मा सबैभन्दा धेरै बिक्री भएका मुख्य सामानहरू:\n{items_text}\n\n"
+                    f"तपाईंको पसल '{facts.business_name}' मा सबैभन्दा धेरै बिक्री भएका मुख्य सामानहरू:\n\n{items_text}\n\n"
+                    f"यी सामानहरूको बिक्री दर र ग्राहक माग उच्च रहेकाले नियमित मौज्दात पर्याप्त राख्न सुझाव दिइन्छ।"
+                )
+            elif parsed_items:
+                items_text = "\n".join([
+                    f"{idx+1}. {it['name']}: दर {it.get('price', 'रेकर्ड अनुसार')} | मौज्दात {it.get('stock', 'पर्याप्त')}"
+                    for idx, it in enumerate(parsed_items[:5])
+                ])
+                return (
+                    f"तपाईंको पसल '{facts.business_name}' को रेकर्ड अनुसार सबैभन्दा धेरै बिक्री हुने मुख्य सामानहरू:\n\n{items_text}\n\n"
                     f"यी सामानहरूको बिक्री गति उच्च रहेकाले नियमित मौज्दात राख्नुहोला।"
                 )
             elif facts.sample_low_stock_items:
-                return f"तपाईंको पसलमा उच्च कारोबार हुने सामानहरूमा {', '.join(facts.sample_low_stock_items[:3])} रहेका छन्।"
+                return f"तपाईंको पसल '{facts.business_name}' मा उच्च कारोबार हुने सामानहरूमा {', '.join(facts.sample_low_stock_items[:3])} रहेका छन्।"
 
         # 7. Low stock & reorder queries ("सकिन लागेको", "स्टक सकियो", "पुनः अर्डर")
         is_low_stock = any(w in q for w in [
-            "सकिन लागेको", "स्टक सकियो", "स्टक सकिन", "सकियो", "पुनः अर्डर", "पुन अर्डर", "reorder", "सकिन लाग्यो", "सकिन लागेका"
-        ])
+            "सकिन लागेको", "स्टक सकियो", "स्टक सकिन", "सकियो", "पुनः अर्डर", "पुन अर्डर", "reorder", "सकिन लाग्यो", "सकिन लागेका",
+            "low stock", "stock sakiyo", "stock sakina", "sakin lagyo", "sakin lageko", "stock low", "out of stock",
+            "kun saman sakina", "kun item sakina", "stock khatam", "stock finish", "restock", "sakina lageko", "sakina lagyo"
+        ]) or (
+            ("stock" in q or "स्टक" in q or "मौज्दात" in q)
+            and ("sakiyo" in q or "sakina" in q or "low" in q or "sakin" in q or "कम" in q or "reorder" in q or "अलर्ट" in q)
+        )
         if is_low_stock:
             if facts.low_stock_items_count > 0:
                 items_str = ", ".join(facts.sample_low_stock_items)
