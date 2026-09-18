@@ -1,10 +1,16 @@
 import { HealthStatus, InventoryItem, ConnectionState } from "@/types";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-  (typeof window !== "undefined" && !window.location.hostname.includes("localhost")
-    ? "https://retailiq-nepal-api.onrender.com"
-    : "http://localhost:8000");
+export function getApiBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    if (window.location.hostname.includes("localhost") || window.location.hostname.includes("127.0.0.1")) {
+      return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8000";
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "https://retailiq-nepal-api.onrender.com";
+}
+
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "https://retailiq-nepal-api.onrender.com";
 
 /**
  * Robust fetch helper with timeout support.
@@ -271,5 +277,3 @@ export async function askBajarSathi(
   }
   return res.json();
 }
-
-export { API_BASE_URL };

@@ -41,14 +41,19 @@ app = FastAPI(
 )
 
 # Configure Cross-Origin Resource Sharing (CORS) - Must be added first so OPTIONS preflight is answered immediately
-if settings.BACKEND_CORS_ORIGINS:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.BACKEND_CORS_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+cors_origins = list(settings.BACKEND_CORS_ORIGINS) if settings.BACKEND_CORS_ORIGINS else []
+for origin in ["https://retailiq-nepal.onrender.com", "https://retailiq-nepal.vercel.app", "http://localhost:3000"]:
+    if origin not in cors_origins:
+        cors_origins.append(origin)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_origin_regex=r"https://.*\.onrender\.com|https://.*\.vercel\.app",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Attach SlowAPI Rate Limiter
 app.state.limiter = limiter
