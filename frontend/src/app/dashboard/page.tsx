@@ -6,7 +6,10 @@ import { StatCards } from "@/components/dashboard/StatCards";
 import { SalesTrendChart } from "@/components/dashboard/SalesTrendChart";
 import { TopProductsChart } from "@/components/dashboard/TopProductsChart";
 import { PaymentBreakdownChart } from "@/components/dashboard/PaymentBreakdownChart";
-import { BajarSathiWidget } from "@/components/dashboard/BajarSathiWidget";
+import { MlForecastChart } from "@/components/dashboard/MlForecastChart";
+import { CategoryBreakdownChart } from "@/components/dashboard/CategoryBreakdownChart";
+import { WeekdaySalesChart } from "@/components/dashboard/WeekdaySalesChart";
+import { BajarSathiDrawer } from "@/components/dashboard/BajarSathiDrawer";
 import { InventoryRestockAlerts } from "@/components/dashboard/InventoryRestockAlerts";
 import { PosUploadCard } from "@/components/PosUploadCard";
 import { AuthModal } from "@/components/AuthModal";
@@ -45,6 +48,7 @@ export default function DashboardPage() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
   const [currentSubscription, setCurrentSubscription] = useState<CurrentSubscription | null>(null);
+  const [bajarSathiDrawerOpen, setBajarSathiDrawerOpen] = useState(false);
 
   const loadData = async () => {
     // Read current user session
@@ -395,6 +399,17 @@ export default function DashboardPage() {
               ))}
             </div>
 
+            {/* Bajar ko Sathi AI Drawer Trigger Button */}
+            <button
+              onClick={() => setBajarSathiDrawerOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 hover:brightness-110 shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95"
+              title="बजारको साथी AI खोल्नुहोस्"
+            >
+              <span>🤖</span>
+              <span className="hidden sm:inline">बजारको साथी AI</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping" />
+            </button>
+
             {/* Refresh button */}
             <button
               onClick={handleRefresh}
@@ -541,35 +556,61 @@ export default function DashboardPage() {
         {/* Section 1: KPI Stat Cards (Dynamic based on uploaded CSV) */}
         <StatCards summary={etlSummary} />
 
-        {/* Section 2: Charts Row 1 (Sales Trend Area Chart + Payment Breakdown Pie Chart) */}
+        {/* Section 2: Sales Trend Area Chart + Category Breakdown Donut Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <SalesTrendChart data={etlSummary?.monthly_trend} />
+          </div>
+          <div className="lg:col-span-1">
+            <CategoryBreakdownChart summary={etlSummary} />
+          </div>
+        </div>
+
+        {/* Section 3: ML 7-Week Demand Forecast Line Chart + Day-of-Week Traffic Bar Chart */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <MlForecastChart summary={etlSummary} />
+          </div>
+          <div className="lg:col-span-1">
+            <WeekdaySalesChart summary={etlSummary} />
+          </div>
+        </div>
+
+        {/* Section 4: Top Products Performance + Payment Breakdown */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <TopProductsChart products={etlSummary?.top_products} />
           </div>
           <div className="lg:col-span-1">
             <PaymentBreakdownChart data={etlSummary?.payment_breakdown} />
           </div>
         </div>
 
-        {/* Section 3: Charts Row 2 (Top Products Horizontal Bar Chart + Bajar ko Sathi AI Widget) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div>
-            <TopProductsChart products={etlSummary?.top_products} />
-          </div>
-          <div>
-            <BajarSathiWidget
-              summary={etlSummary}
-              storeName={displayStoreName}
-              tenantId={displayTenantId}
-            />
-          </div>
-        </div>
-
-        {/* Section 4: Inventory Restock Intelligence Table (Dynamic based on uploaded CSV) */}
+        {/* Section 5: Inventory Restock Intelligence Table (Dynamic based on uploaded CSV) */}
         <div>
           <InventoryRestockAlerts summary={etlSummary} />
         </div>
       </main>
+
+      {/* Floating Action Button (FAB) for Bajar ko Sathi AI */}
+      <button
+        onClick={() => setBajarSathiDrawerOpen(true)}
+        className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-400 text-slate-950 font-black text-xs sm:text-sm shadow-2xl shadow-emerald-500/40 hover:scale-105 active:scale-95 transition-all group border border-emerald-300/40"
+        title="बजारको साथी AI खोल्नुहोस्"
+      >
+        <span className="text-lg group-hover:rotate-12 transition-transform">🤖</span>
+        <span className="tracking-tight font-bold">बजारको साथी AI</span>
+        <span className="h-2 w-2 rounded-full bg-slate-950 animate-pulse" />
+      </button>
+
+      {/* Slide-over Drawer for Bajar ko Sathi */}
+      <BajarSathiDrawer
+        isOpen={bajarSathiDrawerOpen}
+        onClose={() => setBajarSathiDrawerOpen(false)}
+        summary={etlSummary}
+        storeName={displayStoreName}
+        tenantId={displayTenantId}
+      />
 
       {/* Upload CSV Modal right on Dashboard */}
       {uploadModalOpen && (
