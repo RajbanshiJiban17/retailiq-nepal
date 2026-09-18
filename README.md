@@ -1,3 +1,6 @@
+https://retailiq-nepal.onrender.com
+
+
 # RetailIQ Nepal 🇳🇵
 
 An intelligent, full-stack retail operating system and inventory analytics platform built specifically for Nepalese storekeepers and supermarkets.
