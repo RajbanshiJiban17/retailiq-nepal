@@ -21,6 +21,8 @@ import { InventoryManagementModal } from "@/components/dashboard/InventoryManage
 import { UserProfile, ETLUploadSummary, CurrentSubscription } from "@/types";
 import { loginUser, fetchCurrentSubscription, fetchRegisteredMerchants } from "@/lib/api";
 import { getNepaliDate } from "@/lib/nepaliDate";
+import { checkSessionValidity, terminateSession } from "@/lib/session";
+import { useSessionTimer } from "@/hooks/useSessionTimer";
 import {
   Building2,
   FileSpreadsheet,
@@ -42,6 +44,7 @@ import {
   Menu,
   Store,
   Package,
+  Clock,
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -63,12 +66,30 @@ export default function DashboardPage() {
   const [inventoryModalOpen, setInventoryModalOpen] = useState(false);
   const [registeredMerchantCount, setRegisteredMerchantCount] = useState<number>(5);
 
+  // Auto-logout & Idle Session Timer (30 minutes inactivity limit)
+  const { formattedTime, isExpiringSoon, extendSession } = useSessionTimer({
+    enabled: !!currentUser,
+    warningThresholdSeconds: 120, // Warn 2 minutes before logout
+    onTimeout: () => {
+      setCurrentUser(null);
+    },
+  });
+
   const displayStoreName =
     currentUser?.business_name || "पशुपति किराना तथा सुपरस्टोर";
   const displayTenantId =
     currentUser?.business_id || "biz-pashupati-001";
 
   const loadData = async () => {
+    // Validate session cookie & inactivity limit
+    const sessionStatus = checkSessionValidity();
+    if (!sessionStatus.isValid) {
+      terminateSession("timeout");
+      setCurrentUser(null);
+      setAuthLoading(false);
+      return;
+    }
+
     // Read current user session
     let userObj: UserProfile | null = null;
     const savedUser = localStorage.getItem("retailiq_user");
@@ -206,8 +227,7 @@ export default function DashboardPage() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("retailiq_token");
-    localStorage.removeItem("retailiq_user");
+    terminateSession("manual");
     setCurrentUser(null);
   };
 
@@ -481,7 +501,25 @@ export default function DashboardPage() {
                 Real-time cash flow, inventory forecasting, and Nepali business intelligence overview.
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Session Inactivity Timer Badge */}
+              <div
+                className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 text-xs transition ${
+                  isExpiringSoon
+                    ? "bg-rose-950/40 border-rose-500/50 text-rose-300 animate-pulse"
+                    : "bg-slate-900/90 border-slate-800 text-slate-300"
+                }`}
+                title="३० मिनेट निष्क्रिय भएपछि सुरक्षाका लागि स्वतः लगआउट हुनेछ"
+              >
+                <ShieldCheck className={`h-4 w-4 ${isExpiringSoon ? "text-rose-400" : "text-emerald-400"}`} />
+                <div>
+                  <span className="text-[10px] text-slate-400 block uppercase tracking-wider">सेसन सुरक्षा</span>
+                  <span className="font-mono font-bold">
+                    {formattedTime}
+                  </span>
+                </div>
+              </div>
+
               <div className="text-right">
                 <span className="text-[11px] text-slate-400 uppercase tracking-wider block">नेपाली मिति (वि.सं.)</span>
                 <span className="text-sm font-semibold text-emerald-400 font-mono">
@@ -641,6 +679,26 @@ export default function DashboardPage() {
           loadData();
         }}
       />
+      {/* Inactivity Session Expiry Warning Toast */}
+      {isExpiringSoon && (
+        <div className="fixed bottom-5 right-5 z-50 p-4 bg-amber-950/95 border border-amber-500/50 rounded-2xl shadow-2xl backdrop-blur-md max-w-sm flex items-start gap-3 animate-in fade-in slide-in-from-bottom duration-300">
+          <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 shrink-0">
+            <Clock className="w-5 h-5 animate-spin" />
+          </div>
+          <div className="flex-1">
+            <p className="text-xs font-bold text-white">सेसन समाप्त हुन लागेको छ!</p>
+            <p className="text-[11px] text-amber-200/80 mt-0.5">
+              सुरक्षाका लागि {formattedTime} मा स्वतः लगआउट हुनेछ।
+            </p>
+            <button
+              onClick={extendSession}
+              className="mt-2.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg transition shadow"
+            >
+              सेसन नवीकरण गर्नुहोस्
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

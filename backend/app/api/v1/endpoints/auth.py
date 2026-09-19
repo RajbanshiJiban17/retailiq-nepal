@@ -100,6 +100,22 @@ def load_users_from_disk():
 load_users_from_disk()
 
 
+def set_auth_cookie(response: Response, token: str, max_age_seconds: int = 1800) -> None:
+    """
+    Sets a browser session cookie for the authenticated merchant with 30-minute idle expiry.
+    """
+    response.set_cookie(
+        key="retailiq_session",
+        value=token,
+        max_age=max_age_seconds,
+        expires=max_age_seconds,
+        path="/",
+        httponly=False,  # Accessible to frontend for inactivity checking and auto-logout
+        samesite="lax",
+        secure=settings.ENVIRONMENT == "production",
+    )
+
+
 @router.post(
     "/register",
     response_model=Token,
@@ -168,6 +184,7 @@ async def register(
 
             user_pub = UserPublic.model_validate(new_user)
             user_pub.business_name = new_business.name
+            set_auth_cookie(response, access_token, max_age_seconds=1800)
             return Token(
                 access_token=access_token,
                 token_type="bearer",
@@ -209,6 +226,8 @@ async def register(
         business_id=new_biz_id,
         role=UserRole.ADMIN.value,
     )
+
+    set_auth_cookie(response, access_token, max_age_seconds=1800)
 
     return Token(
         access_token=access_token,
@@ -274,6 +293,7 @@ async def login(
                 if hasattr(user, "business") and user.business:
                     user_pub.business_name = user.business.name
 
+                set_auth_cookie(response, access_token, max_age_seconds=1800)
                 return Token(
                     access_token=access_token,
                     token_type="bearer",
@@ -320,6 +340,8 @@ async def login(
         role=user_entry["role"].value,
     )
 
+    set_auth_cookie(response, access_token, max_age_seconds=1800)
+
     return Token(
         access_token=access_token,
         token_type="bearer",
@@ -336,6 +358,16 @@ async def login(
             is_business_owner=user_entry["is_business_owner"],
         ),
     )
+
+
+@router.post(
+    "/logout",
+    summary="Merchant logout and session cookie invalidation",
+    description="Deletes the retailiq_session cookie and ends the current merchant session.",
+)
+async def logout(response: Response) -> Any:
+    response.delete_cookie(key="retailiq_session", path="/")
+    return {"status": "success", "message": "सत्र समाप्त भयो (Logged out successfully)"}
 
 
 @router.get(

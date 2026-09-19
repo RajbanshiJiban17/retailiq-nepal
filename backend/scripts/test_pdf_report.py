@@ -39,11 +39,13 @@ def create_sample_report_data() -> WeeklyReportData:
     report_id = f"TEST-REP-{now.strftime('%Y%m%d')}-001"
     tenant_id = str(uuid.uuid4())
 
+    from app.utils.nepali_date import get_current_nepali_date_str
+
     return WeeklyReportData(
         report_id=report_id,
         business_id=tenant_id,
         generated_at=now,
-        nepali_date="२०८३ भाद्र २५, बिहीबार",
+        nepali_date=get_current_nepali_date_str(now),
         week_label=f"{start.strftime('%Y-%m-%d')} देखि {now.strftime('%Y-%m-%d')}",
         store=StoreProfile(
             name="पशुपति किराना तथा सुपरस्टोर (Pashupati Kirana)",

@@ -18,9 +18,11 @@ import {
   Bot,
   Layers,
   Crown,
+  ShieldAlert,
 } from "lucide-react";
 import { loginUser, registerMerchant, fetchRegisteredMerchants } from "@/lib/api";
 import { UserProfile } from "@/types";
+import { startSession } from "@/lib/session";
 
 interface Props {
   onLoginSuccess: (user: UserProfile) => void;
@@ -31,6 +33,18 @@ export function MerchantAuthGateway({ onLoginSuccess }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [timeoutNotice, setTimeoutNotice] = useState<string | null>(null);
+
+  // Inactivity timeout notice check
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const reason = sessionStorage.getItem("retailiq_logout_reason");
+      if (reason === "inactivity") {
+        setTimeoutNotice("सुरक्षाको लागि ३० मिनेट निष्क्रिय भएपछि स्वतः लगआउट गरियो। कृपया पुन: लगइन गर्नुहोस्।");
+        sessionStorage.removeItem("retailiq_logout_reason");
+      }
+    }
+  }, []);
 
   // Form states
   const [email, setEmail] = useState("");
@@ -97,9 +111,7 @@ export function MerchantAuthGateway({ onLoginSuccess }: Props) {
               ? "पशुपति किराना तथा सुपरस्टोर"
               : `${res.user.full_name}'s Store`),
         };
-        localStorage.setItem("retailiq_token", res.access_token);
-        localStorage.setItem("retailiq_user", JSON.stringify(userToSave));
-        window.dispatchEvent(new Event("retailiq_user_updated"));
+        startSession(res.access_token, userToSave, 30);
         setSuccessMsg("सफलतापूर्वक लगइन भयो! ड्यासबोर्ड खुल्दैछ...");
         setTimeout(() => {
           onLoginSuccess(userToSave);
@@ -137,9 +149,7 @@ export function MerchantAuthGateway({ onLoginSuccess }: Props) {
       is_business_owner: true,
     };
 
-    localStorage.setItem("retailiq_token", `demo-token-${merchant.id}`);
-    localStorage.setItem("retailiq_user", JSON.stringify(demoUser));
-    window.dispatchEvent(new Event("retailiq_user_updated"));
+    startSession(`demo-token-${merchant.id}`, demoUser, 30);
     onLoginSuccess(demoUser);
   };
 
@@ -225,6 +235,13 @@ export function MerchantAuthGateway({ onLoginSuccess }: Props) {
                 नयाँ पसल दर्ता (Register)
               </button>
             </div>
+
+            {timeoutNotice && (
+              <div className="mb-4 p-3 rounded-xl bg-amber-950/50 border border-amber-500/60 text-xs text-amber-200 flex items-center gap-2.5">
+                <ShieldAlert className="h-4 w-4 shrink-0 text-amber-400" />
+                <span>{timeoutNotice}</span>
+              </div>
+            )}
 
             {error && (
               <div className="mb-4 p-3 rounded-xl bg-rose-950/40 border border-rose-800/60 text-xs text-rose-300">

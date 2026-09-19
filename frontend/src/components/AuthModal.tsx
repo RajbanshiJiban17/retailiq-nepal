@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { X, Building2, Lock, Mail, Phone, User, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { loginUser, registerMerchant } from "@/lib/api";
+import { startSession } from "@/lib/session";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -67,9 +68,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           ...res.user,
           business_name: res.user.business_name || (res.user.email === "admin@retailiq.com.np" ? "पशुपति किराना तथा सुपरस्टोर" : `${res.user.full_name}'s Store`),
         };
-        localStorage.setItem("retailiq_token", res.access_token);
-        localStorage.setItem("retailiq_user", JSON.stringify(userToSave));
-        window.dispatchEvent(new Event("retailiq_user_updated"));
+        startSession(res.access_token, userToSave, 30);
         setSuccessMsg("सफलतापूर्वक लगइन भयो! (Login Successful)");
         setTimeout(() => {
           onSuccess(userToSave);
