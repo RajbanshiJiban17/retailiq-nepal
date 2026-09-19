@@ -306,31 +306,40 @@ export function BajarSathiDrawer({
       />
 
       {/* Slide-over Drawer Panel */}
-      <div className="fixed inset-y-0 right-0 flex max-w-full pl-4">
-        <div className="w-screen max-w-sm sm:max-w-md bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col h-full z-10 animate-in slide-in-from-right duration-300">
+      <div className="fixed inset-y-0 right-0 flex max-w-full pl-0 sm:pl-4">
+        <div className="w-screen max-w-full sm:max-w-md bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col h-full z-10 animate-in slide-in-from-right duration-300">
           {/* Header */}
-          <div className="p-3.5 sm:p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90 backdrop-blur-md">
+          <div className="p-3 sm:p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/95 backdrop-blur-md">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-xl shadow-lg shadow-emerald-500/20">
-                🤖
+              {/* Cute Sano Bot Mascot Face in Header */}
+              <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 via-teal-500 to-emerald-700 p-0.5 shadow-lg shadow-emerald-500/20 shrink-0">
+                <div className="w-full h-full rounded-[14px] bg-slate-950 flex flex-col items-center justify-center p-1 border border-emerald-400/30">
+                  <div className="flex items-center gap-1.5 my-0.5">
+                    <div className="w-1.5 h-2 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400 animate-pulse" />
+                    <div className="w-1.5 h-2 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400 animate-pulse" />
+                  </div>
+                  <div className="w-2.5 h-0.5 border-b border-emerald-400 rounded-full" />
+                </div>
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
               </div>
+
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="font-bold text-white text-base">
-                    बजारको साथी (Bajar ko Sathi)
+                  <h2 className="font-bold text-white text-sm sm:text-base leading-tight">
+                    बजारको साथी AI
                   </h2>
-                  <span className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[9px] sm:text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    सक्रिय (Active)
+                    अनलाइन
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 truncate max-w-[240px]">
-                  {storeName} {summary ? `• ${summary.file_name}` : ""}
+                <p className="text-[11px] text-slate-400 truncate max-w-[180px] sm:max-w-[240px]">
+                  {storeName} {summary ? `• ${summary.file_name}` : "• AI सल्लाहकार"}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <button
                 onClick={() =>
                   setMessages([
@@ -341,15 +350,15 @@ export function BajarSathiDrawer({
                     },
                   ])
                 }
-                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
-                title="Clear Chat"
+                className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
+                title="च्याट खाली गर्नुहोस्"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
-                title="Close"
+                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                title="बन्द गर्नुहोस्"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -357,7 +366,7 @@ export function BajarSathiDrawer({
           </div>
 
           {/* Suggestion Chips */}
-          <div className="px-4 py-2.5 bg-slate-950/60 border-b border-slate-800/80 overflow-x-auto scrollbar-none flex gap-1.5">
+          <div className="px-3 sm:px-4 py-2 bg-slate-950/70 border-b border-slate-800/80 overflow-x-auto scrollbar-none flex gap-1.5">
             {SAMPLE_QUESTIONS.map((q, idx) => (
               <button
                 key={idx}

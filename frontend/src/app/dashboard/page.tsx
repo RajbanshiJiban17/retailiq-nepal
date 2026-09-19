@@ -10,6 +10,7 @@ import { MlForecastChart } from "@/components/dashboard/MlForecastChart";
 import { CategoryBreakdownChart } from "@/components/dashboard/CategoryBreakdownChart";
 import { WeekdaySalesChart } from "@/components/dashboard/WeekdaySalesChart";
 import { BajarSathiDrawer } from "@/components/dashboard/BajarSathiDrawer";
+import { BajarSathiBotFab } from "@/components/dashboard/BajarSathiBotFab";
 import { InventoryRestockAlerts } from "@/components/dashboard/InventoryRestockAlerts";
 import { PosUploadCard } from "@/components/PosUploadCard";
 import { AuthModal } from "@/components/AuthModal";
@@ -304,11 +305,11 @@ export default function DashboardPage() {
               </Link>
 
               {/* Dynamic Store Header */}
-              <div className="flex items-center gap-2 border-l border-slate-800 pl-3 sm:pl-4">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <div className="flex items-center gap-2 border-l border-slate-800 pl-2.5 sm:pl-4">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
                   <Building2 className="h-4 w-4" />
                 </div>
-                <div className="max-w-[170px] sm:max-w-[260px] truncate">
+                <div className="max-w-[110px] xs:max-w-[160px] sm:max-w-[260px] truncate">
                   <span className="text-xs sm:text-sm text-white font-bold block truncate">
                     {displayStoreName}
                   </span>
@@ -319,23 +320,23 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Clean Executive Navbar Controls (No duplicate buttons from sidebar) */}
-            <div className="flex items-center gap-2 sm:gap-3">
+            {/* Clean Executive Navbar Controls */}
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               {/* Registered Merchants Counter Button */}
               <button
                 onClick={() => setMerchantDirectoryOpen(true)}
-                className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-800 text-emerald-400 hover:border-emerald-500/50 hover:bg-slate-850 transition"
+                className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-800 text-emerald-400 hover:border-emerald-500/50 hover:bg-slate-850 transition shrink-0"
                 title="दर्ता भएका सबै पसलहरूको विवरण हेर्नुहोस् (View Merchant Directory)"
               >
                 <Store className="h-3.5 w-3.5 text-emerald-400" />
                 <span className="font-bold">{registeredMerchantCount}+</span>
-                <span className="hidden md:inline text-slate-300">पसलहरू दर्ता</span>
+                <span className="hidden md:inline text-slate-300">पसलहरू</span>
               </button>
 
               {/* Stored Items CRUD Shortcut */}
               <button
                 onClick={() => setInventoryModalOpen(true)}
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-200 hover:text-white hover:border-slate-700 transition"
+                className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-200 hover:text-white hover:border-slate-700 transition"
                 title="इन्भेन्टरी सम्पादन र व्यवस्थापन (CRUD)"
               >
                 <Package className="h-3.5 w-3.5 text-emerald-400" />
@@ -345,14 +346,14 @@ export default function DashboardPage() {
               {/* Active Subscription Plan Badge & Upgrade Button */}
               <button
                 onClick={() => setSubscriptionModalOpen(true)}
-                className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition border shadow-sm ${
+                className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition border shadow-sm shrink-0 ${
                   currentSubscription?.plan_id === "enterprise"
-                    ? "bg-purple-950/70 border-purple-500/50 text-purple-300 hover:bg-purple-900/60 shadow-purple-950/40"
+                    ? "bg-purple-950/70 border-purple-500/50 text-purple-300 hover:bg-purple-900/60"
                     : currentSubscription?.plan_id === "pro"
-                    ? "bg-amber-950/70 border-amber-500/50 text-amber-300 hover:bg-amber-900/60 shadow-amber-950/40"
-                    : "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-850"
+                    ? "bg-amber-950/70 border-amber-500/50 text-amber-300 hover:bg-amber-900/60"
+                    : "bg-slate-900 border-slate-800 text-emerald-400 hover:bg-slate-850"
                 }`}
-                title="सदस्यता योजना परिवर्तन गर्नुहोस् (Manage Subscription)"
+                title="सदस्यता योजना हेर्नुहोस्"
               >
                 <Crown className="h-3.5 w-3.5 text-amber-400" />
                 <span>
@@ -391,7 +392,7 @@ export default function DashboardPage() {
         </header>
 
         {/* Main Content Area */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 w-full">
+        <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-6 sm:space-y-8 w-full pb-28 sm:pb-32">
           {/* Active Uploaded Dataset Banner or Empty State Notice */}
           {etlSummary ? (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-emerald-950/60 via-slate-900 to-slate-900 border border-emerald-500/40 rounded-2xl p-4 shadow-lg">
@@ -474,18 +475,18 @@ export default function DashboardPage() {
           )}
 
           {/* Welcome and Summary Banner */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-900/90 to-emerald-950/40 border border-slate-800/80 rounded-2xl p-6 shadow-xl">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-900/90 to-emerald-950/40 border border-slate-800/80 rounded-2xl p-4 sm:p-6 shadow-xl">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl font-black text-white tracking-tight">
+                <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight break-words">
                   {displayStoreName} • ड्यासबोर्ड
                 </h1>
-                <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs px-2.5 py-0.5 rounded-full font-medium">
+                <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] px-2.5 py-0.5 rounded-full font-medium">
                   Tenant: {displayTenantId}
                 </span>
                 <button
                   onClick={() => setSubscriptionModalOpen(true)}
-                  className={`inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full font-semibold border transition ${
+                  className={`inline-flex items-center gap-1 text-[11px] sm:text-xs px-2.5 py-0.5 rounded-full font-semibold border transition ${
                     currentSubscription?.plan_id === "enterprise"
                       ? "bg-purple-500/20 text-purple-300 border-purple-500/40 hover:bg-purple-500/30"
                       : currentSubscription?.plan_id === "pro"
@@ -501,7 +502,7 @@ export default function DashboardPage() {
                 Real-time cash flow, inventory forecasting, and Nepali business intelligence overview.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-800/80">
               {/* Session Inactivity Timer Badge */}
               <div
                 className={`px-3 py-1.5 rounded-xl border flex items-center gap-2 text-xs transition ${
@@ -520,9 +521,9 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="text-right">
+              <div className="text-left sm:text-right">
                 <span className="text-[11px] text-slate-400 uppercase tracking-wider block">नेपाली मिति (वि.सं.)</span>
-                <span className="text-sm font-semibold text-emerald-400 font-mono">
+                <span className="text-xs sm:text-sm font-semibold text-emerald-400 font-mono block">
                   {getNepaliDate().fullNepaliString}
                 </span>
                 <span className="text-[10px] text-slate-500 block font-mono">
@@ -579,16 +580,11 @@ export default function DashboardPage() {
         </footer>
       </div>
 
-      {/* Floating Action Button (FAB) for Bajar ko Sathi AI */}
-      <button
+      {/* Floating Action Mascot Button for Bajar ko Sathi AI */}
+      <BajarSathiBotFab
         onClick={() => setBajarSathiDrawerOpen(true)}
-        className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-400 text-slate-950 font-black text-xs sm:text-sm shadow-2xl shadow-emerald-500/40 hover:scale-105 active:scale-95 transition-all group border border-emerald-300/40"
-        title="बजारको साथी AI खोल्नुहोस्"
-      >
-        <span className="text-lg group-hover:rotate-12 transition-transform">🤖</span>
-        <span className="tracking-tight font-bold">बजारको साथी AI</span>
-        <span className="h-2 w-2 rounded-full bg-slate-950 animate-pulse" />
-      </button>
+        hasData={!!etlSummary}
+      />
 
       {/* Slide-over Drawer for Bajar ko Sathi */}
       <BajarSathiDrawer
