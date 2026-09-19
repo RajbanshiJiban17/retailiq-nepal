@@ -15,14 +15,14 @@ except ImportError:
     _HAS_GENAI = False
 
 
-SYSTEM_INSTRUCTION = """तपाईं 'बजारको साथी' (Bajar ko Sathi) हुनुहुन्छ — नेपालका खुद्रा तथा थोक पसलेहरूलाई व्यवसाय सञ्चालन, इन्भेन्टरी, नाफा र बिक्री व्यवस्थापनमा सहयोग गर्ने एक भरपर्दो तथा मैत्रीपूर्ण AI साथी।
+SYSTEM_INSTRUCTION = """तपाईं 'बजारको साथी' (Bajar ko Sathi) हुनुहुन्छ — नेपालका खुद्रा तथा थोक पसलेहरूलाई व्यापार, मौज्दात, नाफा र बिक्री व्यवस्थापनमा सहयोग गर्ने एक छरितो, भरपर्दो तथा मैत्रीपूर्ण AI साथी।
 
 मुख्य निर्देशनहरू:
-१. जब पसलेले "hello", "hi", "नमस्ते" वा सामान्य अभिवादन गर्छन्, उनीहरूलाई आदरपूर्वक मिठो नेपालीमा फर्काउनुहोस् र पसलको नाम लिएर आज कसरी मद्दत गर्न सकिन्छ भनी सोध्नुहोस्।
-२. पसलेको पसलको आम्दानी, नाफा, मौज्दात (Stock), बिक्री संख्या वा सामानबारे सोध्दा दिइएको "पसलको आधिकारिक डाटाबेस विवरण (STORE FACTS)" को वास्तविक तथ्यहरूको आधारमा उत्तर दिनुहोस्।
-३. यदि पसलेले पसलको रेकर्डमा नभएको कुनै बाहिरी सामानको स्टक वा मूल्य सोध्छन् भने, मनगढन्ते उत्तर नदिनुहोस्। सिधै विनम्रताका साथ भन्नुहोस्: "माफ गर्नुहोला, तपाईंको पसलको रेकर्डमा यो विवरण उपलब्ध छैन।"
-४. खुद्रा व्यापार, नाफा वृद्धि, शनिबारको बिक्री रणनीति वा ग्राहक सम्बन्धबारे सोधेमा नेपालको स्थानीय बजार अनुसार व्यावहारिक तथा उपयोगी सल्लाह दिनुहोस्।
-५. उत्तर सधैं शुद्ध, स्पष्ट, व्यावसायिक र मिठो नेपाली भाषामा हुनुपर्छ। रकमहरू उल्लेख गर्दा 'रु.' वा 'NPR' प्रयोग गर्नुहोस्।"""
+१. जब पसलेले "hello", "hi", "नमस्ते" गर्छन्, उनीहरूलाई आदरपूर्वक १ वाक्यमा मिठो नेपालीमा फर्काउनुहोस्।
+२. पसलेको पसलको आम्दानी, नाफा, मौज्दात (Stock), बिक्री संख्याबारे सोध्दा "पसलको आधिकारिक डाटाबेस विवरण (STORE FACTS)" को आधारमा मात्र उत्तर दिनुहोस्।
+३. यदि पसलको रेकर्डमा नभएको बाहिरी सामान सोधिएमा सिधै भन्नुहोस्: "तपाईंको पसलको रेकर्डमा यो विवरण उपलब्ध छैन।"
+४. उत्तर सधैं अत्यन्त छोटो, चिटिक्क परेको र बढीमा २-३ वाक्य वा २-३ बुँदामा मात्र दिनुहोस्। लामो व्याख्या वा भाषण कहिल्यै नदिनुहोस्।
+५. रकमहरू उल्लेख गर्दा 'रु.' वा 'NPR' प्रयोग गर्नुहोस्।"""
 
 
 class BajarKoSathiAssistant:
@@ -43,24 +43,19 @@ class BajarKoSathiAssistant:
         """
         q = query.lower().strip()
 
-        # 1. Natural Greetings ("hello", "hi", "नमस्ते", "नमस्कार", "hey", "good morning")
+        # 1. Natural Greetings
         greeting_words = ["hello", "hi", "hey", "नमस्ते", "नमस्कार", "हेल्लो", "गुड मर्निङ", "good morning", "के छ", "सञ्चै"]
         if any(q == w or q.startswith(w + " ") or q.startswith(w + "!") or q.startswith(w + "?") for w in greeting_words):
-            return (
-                f"नमस्ते हजुर! म तपाईंको पसल '{facts.business_name}' को AI व्यापार सल्लाहकार 'बजारको साथी' हुँ। "
-                f"आज म तपाईंलाई कारोबार, आम्दानी-नाफा, स्टक मौज्दात वा आगामी अर्डरिङ बारे के सहयोग गर्न सक्छु?"
-            )
+            return f"नमस्ते! म 'बजारको साथी'। पसल '{facts.business_name}' को बिक्री, नाफा वा स्टकबारे के जान्न चाहनुहुन्छ?"
 
-        # 2. System Capabilities & Help ("तिमी को हौ", "के गर्न सक्छौ", "help", "सहयोग", "मद्दत")
+        # 2. System Capabilities & Help
         if any(w in q for w in ["को हौ", "के गर्न", "काम के", "help", "मद्दत", "सहयोग", "feature", "सुविधा"]):
             return (
-                f"म 'बजारको साथी' — नेपालका खुद्रा तथा थोक पसलेहरूका लागि विशेष रूपमा तयार पारिएको AI सल्लाहकार हुँ।\n\n"
-                f"म तपाईंको पसल '{facts.business_name}' का लागि निम्न काम गर्न सक्छु:\n"
-                f"१. कुल बिक्री तथा खुद्रा नाफा (Profit & Margin) को वास्तविक विश्लेषण\n"
-                f"२. सकिन लागेका सामानहरूको अलर्ट र आगामी अर्डर सिफारिस (Restock Alerts)\n"
-                f"३. सबैभन्दा धेरै बिक्री हुने मुख्य सामानहरू (Top Moving Products) पहिचान\n"
-                f"४. नगद र डिजिटल (Fonepay, eSewa) भुक्तानीको हिसाब किताब\n"
-                f"५. कुनै पनि निश्चित सामानको हालको मौज्दात र मूल्य विवरण।"
+                f"म 'बजारको साथी' AI हुँ। तपाईंलाई निम्न सहयोग गर्न सक्छु:\n"
+                f"• कुल बिक्री तथा नाफा हिसाब\n"
+                f"• सकिन लागेका सामानको स्टक अलर्ट\n"
+                f"• धेरै र थोरै बिक्ने सामानको विश्लेषण\n"
+                f"• चाडपर्व तथा ७-हप्ते अर्डर प्रक्षेपण"
             )
 
         # Parse catalog items strictly from context_text
@@ -89,7 +84,7 @@ class BajarKoSathiAssistant:
                 if item_info["name"]:
                     parsed_items.append(item_info)
 
-        # 3. 7-Week ML Demand Forecasting ("७ हप्ता", "7 week", "forecast", "भविष्यवाणी", "prediction", "आउने हप्ता")
+        # 3. 7-Week ML Demand Forecasting
         is_forecast = any(w in q for w in [
             "७ हप्ता", "7 हप्ता", "7 week", "seven week", "७ week", "forecast", "forecasting",
             "भविष्यवाणी", "prediction", "आउने हप्ता", "aune week", "aune 7 week", "projection",
@@ -98,16 +93,13 @@ class BajarKoSathiAssistant:
         if is_forecast:
             avg_weekly_rev = facts.total_revenue_npr / 6 if facts.total_revenue_npr > 0 else 52000.0
             return (
-                f"📊 तपाईंको स्टोर '{facts.business_name}' को Scikit-Learn ML मोडेल आधारित आगामी ७ हप्ता (7 Weeks) को बिक्री तथा स्टक प्रक्षेपण:\n\n"
-                f"• हप्ता १ (Week 1): करिब {int(facts.total_sales_invoices * 0.16)} बिलहरू | अनुमानित आम्दानी: रु. {avg_weekly_rev * 0.95:,.2f} (स्थिर माग)\n"
-                f"• हप्ता २ (Week 2): करिब {int(facts.total_sales_invoices * 0.17)} बिलहरू | अनुमानित आम्दानी: रु. {avg_weekly_rev * 1.02:,.2f}\n"
-                f"• हप्ता ३ (Week 3): करिब {int(facts.total_sales_invoices * 0.19)} बिलहरू | अनुमानित आम्दानी: रु. {avg_weekly_rev * 1.15:,.2f} (सप्ताहन्त चाप)\n"
-                f"• हप्ता ४ (Week 4): करिब {int(facts.total_sales_invoices * 0.18)} बिलहरू | अनुमानित आम्दानी: रु. {avg_weekly_rev * 1.08:,.2f}\n"
-                f"• हप्ता ५-७ (Weeks 5-7): औषत साप्ताहिक बिक्री {int(facts.total_sales_invoices * 0.20)} कारोबार र चाडपर्व नजिकिँदै गर्दा २०-३५% थप वृद्धि।\n\n"
-                f"⚠️ स्टक रिअर्डर अलर्ट: हाल {facts.low_stock_items_count} वटा सामान न्यून स्टकमा छन्, जुन हप्ता २ भित्रै सकिन सक्छन्। कृपया हप्ता १ को अन्त्य अगावै पुनः अर्डर पठाउनुहोला।"
+                f"📊 ७ हप्ते ML बिक्री प्रक्षेपण ({facts.business_name}):\n"
+                f"• साप्ताहिक औषत: रु. {avg_weekly_rev:,.0f} (हप्ता १-४ स्थिर कारोबार)\n"
+                f"• हप्ता ५-७: चाडपर्वले २५-३०% बिक्री बढ्ने अनुमान\n"
+                f"⚠️ सुझाव: हप्ता २ अगावै न्यून स्टक सामान पुनः मगाउनुहोस्।"
             )
 
-        # 4. Festivals & Festive Discount Strategy ("चाडपर्व", "दशैं", "तिहार", "छठ", "festival", "discount", "छुट")
+        # 4. Festivals & Festive Discount Strategy
         is_festival = any(w in q for w in [
             "चाडपर्व", "दशैं", "दशै", "तिहार", "छठ", "नयाँ वर्ष", "तीज", "होली", "पर्व",
             "festival", "festive", "dashain", "tihar", "chhath", "teej", "chad parva", "parba",
@@ -115,15 +107,9 @@ class BajarKoSathiAssistant:
         ])
         if is_festival:
             return (
-                f"🎉 नेपाली चाडपर्व (दशैं, तिहार, छठ) को लागि पसल '{facts.business_name}' को व्यापार, अर्डर र छुट रणनीति:\n\n"
-                f"१. माग पूर्वानुमान (Festive Demand Surge):\n"
-                f"   - खाद्यान्न (बासमती चामल, घ्यू, पिठो, तोरीको तेल, मसला): सामान्य महिना भन्दा १५०% देखि २००% (२ देखि २.५ गुणा) बढी माग हुन्छ।\n"
-                f"   - पेय पदार्थ, जुस, ड्राइ फ्रुट्स, चकलेट तथा चिया: माग ८०% देखि १२०% ले वृद्धि हुन्छ।\n\n"
-                f"२. कति र कहिले सामान मगाउने (Restock Timeline):\n"
-                f"   - चाडपर्व सुरु हुनुभन्दा २ देखि ३ हप्ता अगावै नियमित मौज्दात भन्दा कम्तीमा ५०% देखि ७०% थप स्टक मगाउनुपर्छ। यसले गर्दा बजारमा मूल्य बढ्ने र ढुवानी जाम हुने जोखिमबाट बचिन्छ।\n\n"
-                f"३. छुट तथा अफर दिने तरिका (Smart Discount Strategy):\n"
-                f"   - कम्बो अफर (Bundle Deals): २५ केजी चामल किन्दा १ लिटर घ्यूमा १०% छुट वा मसला प्याकेट उपहार दिनुहोस् (नगद छुट भन्दा बण्डल बढी प्रभावकारी हुन्छ)।\n"
-                f"   - सुस्त सामान क्लियरेन्स: कम बिक्री भएका पुराना सामानहरूलाई ५-१०% फेस्टिभल डिस्काउन्टमा राखी पूँजी खाली गर्नुहोस्।"
+                f"🎉 चाडपर्व व्यापार रणनीति ({facts.business_name}):\n"
+                f"१. खाद्यान्न र मसलाको माग २ गुणा बढ्ने हुँदा २ हप्ता अगावै ५०% थप स्टक मगाउनुहोस्।\n"
+                f"२. चामल वा घ्यूसँग मसला प्याक बण्डल राखी ५-१०% छुट दिएर बिक्री बढाउनुहोस्।"
             )
 
         # 5. Least-selling / Slow-moving products ("कम बिक्री", "thori sale", "kaam sale", "least sold")
@@ -140,23 +126,18 @@ class BajarKoSathiAssistant:
         )
         if is_least_selling:
             if parsed_items and len(parsed_items) >= 2:
-                bottom_items = parsed_items[::-1][:4]
-                lines_res = [f"तपाईंको स्टोर '{facts.business_name}' को बिक्री तथ्याङ्क अनुसार तुलनात्मक रूपमा कम बिक्री भएका (Slow-moving) सामानहरू:"]
+                bottom_items = parsed_items[::-1][:3]
+                lines_res = [f"📉 कम बिक्री भएका सामान ({facts.business_name}):"]
                 for b in bottom_items:
-                    lines_res.append(f"• {b['name']}: हालको मौज्दात {b.get('stock', 'पर्याप्त')} (दर: {b.get('price', 'रेकर्ड अनुसार')})")
-                lines_res.append("\n💡 खुद्रा व्यापार रणनीति तथा सुझाव:")
-                lines_res.append("१. पूँजी (Working Capital) जाम हुन नदिन यी सामानहरूको थप नयाँ अर्डर तत्काल रोक्नुहोस्।")
-                lines_res.append("२. मौज्दात छिट्टै क्लियर गर्न ५% देखि १०% सम्म 'विशेष छुट (Discount)' वा धेरै बिक्री हुने सामानसँग 'कम्बो अफर' दिएर बिक्री बढाउनुहोस्।")
+                    lines_res.append(f"• {b['name']}: मौज्दात {b.get('stock', 'पर्याप्त')} (दर: {b.get('price', 'रेकर्ड अनुसार')})")
+                lines_res.append("💡 सुझाव: थप अर्डर रोक्नुहोस् र ५-१०% छुट दिएर मौज्दात क्लियर गर्नुहोस्।")
                 return "\n".join(lines_res)
             else:
                 return (
-                    f"तपाईंको स्टोर '{facts.business_name}' मा कुल {facts.total_active_products} वटा सामानहरू मध्ये सुस्त गतिमा रहेका सामानहरू:\n\n"
-                    f"💡 खुद्रा व्यापार रणनीति तथा सुझाव:\n"
-                    f"१. पूँजी जाम हुन नदिन कम बिक्री हुने पुराना सामानहरूको थप नयाँ अर्डर तत्काल रोक्नुहोस्।\n"
-                    f"२. मौज्दात छिट्टै क्लियर गर्न ५% देखि १०% सम्म 'क्लियरेन्स छुट (Clearance Discount)' वा चाडपर्व अफरमा राख्नुहोस्।"
+                    f"तपाईंको स्टोर '{facts.business_name}' मा सुस्त गतिमा रहेका सामानको नयाँ अर्डर तत्काल रोकी ५-१०% छुटमा क्लियर गर्न सुझाव दिइन्छ।"
                 )
 
-        # 6. Top-selling specific question ("सबैभन्दा धेरै बिक्री", "top product", "best selling", "sabai bhanda dherai kun item sale vayeu")
+        # 6. Top-selling specific question
         is_top_selling = any(w in q for w in [
             "सबैभन्दा धेरै", "धेरै बिक्री", "सबैभन्दा बढी", "धेरै बिक्ने", "बढी बिक्री", "धेरै सेल", "धेरै बिक्यो",
             "top seller", "best seller", "top product", "best product", "top selling", "best selling",
@@ -178,24 +159,18 @@ class BajarKoSathiAssistant:
                 and "धेरै बिक्री भएका मुख्य सामानहरू" not in l
             ]
             if top_lines:
-                items_text = "\n".join([f"{idx+1}. {l}" for idx, l in enumerate(top_lines[:5])])
-                return (
-                    f"तपाईंको पसल '{facts.business_name}' मा सबैभन्दा धेरै बिक्री भएका मुख्य सामानहरू:\n\n{items_text}\n\n"
-                    f"यी सामानहरूको बिक्री दर र ग्राहक माग उच्च रहेकाले नियमित मौज्दात पर्याप्त राख्न सुझाव दिइन्छ।"
-                )
+                items_text = "\n".join([f"{idx+1}. {l}" for idx, l in enumerate(top_lines[:3])])
+                return f"🏆 मुख्य धेरै बिक्री भएका सामान:\n{items_text}\n👉 यी सामानहरूको नियमित मौज्दात पर्याप्त राख्नुहोला।"
             elif parsed_items:
                 items_text = "\n".join([
-                    f"{idx+1}. {it['name']}: दर {it.get('price', 'रेकर्ड अनुसार')} | मौज्दात {it.get('stock', 'पर्याप्त')}"
-                    for idx, it in enumerate(parsed_items[:5])
+                    f"{idx+1}. {it['name']} (दर: {it.get('price', '-')}, मौज्दात: {it.get('stock', '-')})"
+                    for idx, it in enumerate(parsed_items[:3])
                 ])
-                return (
-                    f"तपाईंको पसल '{facts.business_name}' को रेकर्ड अनुसार सबैभन्दा धेरै बिक्री हुने मुख्य सामानहरू:\n\n{items_text}\n\n"
-                    f"यी सामानहरूको बिक्री गति उच्च रहेकाले नियमित मौज्दात राख्नुहोला।"
-                )
+                return f"🏆 मुख्य धेरै बिक्री भएका सामान:\n{items_text}\n👉 माग उच्च रहेकाले मौज्दात पर्याप्त राख्नुहोला।"
             elif facts.sample_low_stock_items:
-                return f"तपाईंको पसल '{facts.business_name}' मा उच्च कारोबार हुने सामानहरूमा {', '.join(facts.sample_low_stock_items[:3])} रहेका छन्।"
+                return f"🏆 उच्च कारोबार हुने मुख्य सामानहरू: {', '.join(facts.sample_low_stock_items[:3])} हुन्।"
 
-        # 7. Low stock & reorder queries ("सकिन लागेको", "स्टक सकियो", "पुनः अर्डर")
+        # 7. Low stock & reorder queries
         is_low_stock = any(w in q for w in [
             "सकिन लागेको", "स्टक सकियो", "स्टक सकिन", "सकियो", "पुनः अर्डर", "पुन अर्डर", "reorder", "सकिन लाग्यो", "सकिन लागेका",
             "low stock", "stock sakiyo", "stock sakina", "sakin lagyo", "sakin lageko", "stock low", "out of stock",
@@ -206,26 +181,20 @@ class BajarKoSathiAssistant:
         )
         if is_low_stock:
             if facts.low_stock_items_count > 0:
-                items_str = ", ".join(facts.sample_low_stock_items)
+                items_str = ", ".join(facts.sample_low_stock_items[:3])
                 return (
-                    f"नमस्ते! तपाईंको पसल '{facts.business_name}' मा हाल {facts.low_stock_items_count} वटा सामानको स्टक सकिन लागेको छ।\n"
-                    f"पुनः अर्डर गर्नुपर्ने सामानहरू: {items_str}।\n"
-                    f"कृपया ग्राहकहरूको माग पूरा गर्न यी सामानहरू छिट्टै मगाउनुहोला।"
+                    f"⚠️ न्यून स्टक अलर्ट: हाल {facts.low_stock_items_count} सामान सकिन लागेका छन् (उदा. {items_str})। ग्राहक नफर्कून् भन्नका लागि छिट्टै मगाउनुहोला।"
                 )
             else:
-                return (
-                    f"नमस्ते! तपाईंको पसल '{facts.business_name}' मा अहिले सबै सामानको स्टक पर्याप्त छ। "
-                    f"हाल कुनै पनि सामान सकिन लागेको छैन।"
-                )
+                return f"✅ तपाईंको पसल '{facts.business_name}' मा अहिले सबै सामानको स्टक पर्याप्त छ।"
 
-        # 8. Profit & Margin queries ("नाफा", "profit", "कमाई", "मार्जिन")
+        # 8. Profit & Margin queries
         if any(w in q for w in ["नाफा", "profit", "मार्जिन", "कमाई"]):
             est_profit = facts.total_revenue_npr * 0.30
             return (
-                f"तपाईंको पसल '{facts.business_name}' को हालको कारोबार विवरण अनुसार:\n"
-                f"- कुल बिक्री आम्दानी: रु. {facts.total_revenue_npr:,.2f}\n"
-                f"- अनुमानित खुद्रा नाफा (करिब ३०% मार्जिन): रु. {est_profit:,.2f}\n"
-                f"- कुल बिक्री बिलहरू: {facts.total_sales_invoices} वटा संकलन भएको छ।"
+                f"💰 कारोबार र नाफा हिसाब ({facts.business_name}):\n"
+                f"• कुल बिक्री: रु. {facts.total_revenue_npr:,.0f} ({facts.total_sales_invoices} बिल)\n"
+                f"• अनुमानित नाफा (३०%): रु. {est_profit:,.0f}"
             )
 
         # 9. Saturday / Peak Demand & Business Strategy ("शनिबार", "माग", "अर्डर")

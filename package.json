@@ -1,0 +1,10 @@
+{
+  "name": "retailiq-nepal",
+  "version": "1.0.0",
+  "private": true,
+  "description": "RetailIQ Nepal Root Orchestration",
+  "scripts": {
+    "build": "npm --prefix frontend install && npm --prefix frontend run build && (cp -r frontend/out ./out 2>/dev/null || true)",
+    "start": "npm --prefix frontend start"
+  }
+}

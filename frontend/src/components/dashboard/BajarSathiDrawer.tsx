@@ -51,7 +51,7 @@ export function BajarSathiDrawer({
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       sender: "bot",
-      text: `नमस्ते हजुर! म तपाईंको पसल '${storeName}' को AI व्यापार सल्लाहकार 'बजारको साथी' हुँ।\n\nआज म तपाईंलाई कारोबार, आम्दानी-नाफा, स्टक मौज्दात वा आगामी ७-हप्ते अर्डरिङ बारे के सहयोग गर्न सक्छु? तलका प्रश्नहरूमा क्लिक गर्नुहोस् वा आफ्नै भाषामा सोध्नुहोस्!`,
+      text: `नमस्ते! म 'बजारको साथी' (AI सल्लाहकार)।\nतपाईंको पसल '${storeName}' को बिक्री, नाफा वा स्टक बारे के जान्न चाहनुहुन्छ?`,
       source: summary ? `Dataset Grounded: ${summary.file_name}` : "RetailIQ Grounded AI",
     },
   ]);
@@ -69,7 +69,7 @@ export function BajarSathiDrawer({
     }
   }, [messages, isOpen]);
 
-  // Client-side grounded fallback response engine
+  // Client-side grounded fallback response engine (Short & Concise)
   const generateGroundedResponse = (queryText: string): { reply: string; source: string } => {
     const q = queryText.toLowerCase().trim();
 
@@ -88,8 +88,8 @@ export function BajarSathiDrawer({
       if (isForecast) {
         const weeklyRev = totalRev / 6;
         return {
-          reply: `📊 तपाईंको स्टोर (${storeName}) को Scikit-Learn ML मोडेल आधारित आगामी ७ हप्ता (7 Weeks) को बिक्री तथा स्टक प्रक्षेपण:\n\n• हप्ता १ (Week 1): करिब ${Math.round(totalRows * 0.16)} बिलहरू | अनुमानित आम्दानी: रु. ${(weeklyRev * 0.95).toLocaleString("en-NP", { maximumFractionDigits: 0 })}/- (स्थिर माग)\n• हप्ता २ (Week 2): करिब ${Math.round(totalRows * 0.17)} बिलहरू | अनुमानित आम्दानी: रु. ${(weeklyRev * 1.02).toLocaleString("en-NP", { maximumFractionDigits: 0 })}/-\n• हप्ता ३ (Week 3): करिब ${Math.round(totalRows * 0.19)} बिलहरू | अनुमानित आम्दानी: रु. ${(weeklyRev * 1.15).toLocaleString("en-NP", { maximumFractionDigits: 0 })}/- (सप्ताहन्त चाप)\n• हप्ता ४ (Week 4): करिब ${Math.round(totalRows * 0.18)} बिलहरू | अनुमानित आम्दानी: रु. ${(weeklyRev * 1.08).toLocaleString("en-NP", { maximumFractionDigits: 0 })}/-\n• हप्ता ५-७ (Weeks 5-7): औषत साप्ताहिक बिक्री ${Math.round(totalRows * 0.20)} कारोबार र चाडपर्व नजिकिँदै गर्दा २०-३५% थप वृद्धि।\n\n⚠️ स्टक रिअर्डर अलर्ट: आगामी हप्ता २ भित्रै कम मौज्दात भएका सामानहरूको स्टक सकिन सक्ने भएकाले हप्ता १ को अन्त्य अगावै पुनः अर्डर पठाउन सुझाव दिइन्छ।`,
-          source: `Scikit-Learn ML Forecaster (7-Week Horizon)`,
+          reply: `📊 आगामी ७ हप्ते ML प्रक्षेपण:\n• साप्ताहिक औषत बिक्री: रु. ${(weeklyRev).toLocaleString("en-NP", { maximumFractionDigits: 0 })}/- (हप्ता १-४ स्थिर)\n• हप्ता ५-७: चाडपर्व नजिकिँदा २५-३५% थप बिक्री वृद्धि\n⚠️ सुझाव: हप्ता २ अगावै न्यून स्टक सामान रिअर्डर गर्नुहोस्।`,
+          source: `ML Forecaster`,
         };
       }
 
@@ -101,8 +101,8 @@ export function BajarSathiDrawer({
       ].some((w) => q.includes(w));
       if (isFestival) {
         return {
-          reply: `🎉 नेपाली चाडपर्व (दशैं, तिहार, छठ) को लागि पसल (${storeName}) को व्यापार, अर्डर र छुट रणनीति:\n\n१. माग पूर्वानुमान (Festive Demand Surge):\n   - खाद्यान्न (बासमती चामल, घ्यू, पिठो, तोरीको तेल, मसला): सामान्य महिना भन्दा १५०% देखि २००% (२ देखि २.५ गुणा) बढी माग हुन्छ।\n   - पेय पदार्थ, जुस, ड्राइ फ्रुट्स, चकलेट तथा चिया: माग ८०% देखि १२०% ले वृद्धि हुन्छ।\n\n२. कति र कहिले सामान मगाउने (Restock Timeline):\n   - चाडपर्व सुरु हुनुभन्दा २ देखि ३ हप्ता अगावै नियमित मौज्दात भन्दा कम्तीमा ५०% देखि ७०% थप स्टक मगाउनुपर्छ। यसले गर्दा बजारमा मूल्य बढ्ने र ढुवानी जाम हुने जोखिमबाट बचिन्छ।\n\n३. छुट तथा अफर दिने तरिका (Smart Discount Strategy):\n   - कम्बो अफर (Bundle Deals): २५ केजी चामल किन्दा १ लिटर घ्यूमा १०% छुट वा मसला प्याकेट उपहार दिनुहोस् (नगद छुट भन्दा बण्डल बढी प्रभावकारी हुन्छ)।\n   - सुस्त सामान क्लियरेन्स: कम बिक्री भएका पुराना सामानहरूलाई ५-१०% फेस्टिभल डिस्काउन्टमा राखी पूँजी खाली गर्नुहोस्।`,
-          source: `RetailIQ Festive AI Strategy`,
+          reply: `🎉 चाडपर्व अर्डर तथा छुट रणनीति:\n१. खाद्यान्न र मसलाको माग २ गुणा बढ्ने हुँदा २ हप्ता अगावै ५०% थप स्टक मगाउनुहोस्।\n२. चामल वा तेलसँग मसला कम्बो प्याक राखी ५-१०% छुट दिएर बिक्री बढाउनुहोस्।`,
+          source: `Festive Strategy`,
         };
       }
 
@@ -122,14 +122,14 @@ export function BajarSathiDrawer({
 
       if (isTopSelling && topItems.length > 0) {
         const itemsList = topItems
-          .slice(0, 5)
+          .slice(0, 3)
           .map(
             (p, idx) =>
               `${idx + 1}. ${p.name}: रु. ${p.revenue.toLocaleString("en-NP")}/- (${(p.unitsSold || 0).toLocaleString()} युनिट)`
           )
           .join("\n");
         return {
-          reply: `तपाईंको स्टोर (${storeName}) मा सबैभन्दा धेरै बिक्री भएका मुख्य सामानहरू निम्न छन्:\n\n${itemsList}\n\nसबैभन्दा उच्च माग र कारोबार '${topItems[0].name}' बाट प्राप्त भएको छ।`,
+          reply: `🏆 सर्वाधिक बिक्री भएका मुख्य सामान:\n${itemsList}\n👉 सबैभन्दा उच्च माग '${topItems[0].name}' को छ।`,
           source: `Grounded: ${summary.file_name}`,
         };
       }
@@ -148,18 +148,13 @@ export function BajarSathiDrawer({
       );
 
       if (isLeastSelling && topItems.length > 0) {
-        const leastItems = [...topItems].reverse().slice(0, 4);
+        const leastItems = [...topItems].reverse().slice(0, 3);
         const leastList = leastItems
-          .map((p, idx) => {
-            const units = p.unitsSold || 0;
-            const rev = p.revenue || 0;
-            const stock = p.stockLeft || Math.round(units * 1.5) + 15;
-            return `• ${p.name}: बिक्री ${units} युनिट (रु. ${rev.toLocaleString("en-NP")}) | बाँकी मौज्दात: ${stock} युनिट`;
-          })
+          .map((p) => `• ${p.name}: बिक्री ${p.unitsSold || 0} युनिट (रु. ${(p.revenue || 0).toLocaleString("en-NP")})`)
           .join("\n");
 
         return {
-          reply: `तपाईंको स्टोर (${storeName}) को बिक्री तथ्याङ्क अनुसार तुलनात्मक रूपमा कम बिक्री भएका (Slow-moving) सामानहरू:\n\n${leastList}\n\n💡 खुद्रा व्यापार रणनीति तथा सुझाव:\n१. पूँजी (Working Capital) जाम हुन नदिन यी सामानहरूको थप नयाँ अर्डर तत्काल रोक्नुहोस्।\n२. मौज्दात छिट्टै क्लियर गर्न ५% देखि १०% सम्म 'विशेष छुट (Discount)' वा धेरै बिक्री हुने सामानसँग 'कम्बो अफर' दिएर बिक्री बढाउनुहोस्।`,
+          reply: `📉 कम बिक्री भएका सामान:\n${leastList}\n💡 सुझाव: नयाँ अर्डर तत्काल रोक्नुहोस् र ५-१०% छुट दिएर मौज्दात क्लियर गर्नुहोस्।`,
           source: `Grounded: ${summary.file_name}`,
         };
       }
@@ -167,17 +162,17 @@ export function BajarSathiDrawer({
       // 5. Profit and revenue queries
       if (q.includes("नाफा") || q.includes("profit") || q.includes("कमाई") || q.includes("आम्दानी") || q.includes("मार्जिन") || q.includes("nafa")) {
         return {
-          reply: `अपलोड गरिएको फाइल (${summary.file_name}) अनुसार जम्मा ${totalRows} वटा कारोबारबाट कुल बिक्री रु. ${totalRev.toLocaleString("en-NP")}/- भएको छ।\n\nअनुमानित खुद्रा मार्जिन (३०%) अनुसार तपाईंको खुद्रा नाफा करिब रु. ${profit.toLocaleString("en-NP", { maximumFractionDigits: 0 })}/- रहेको छ।`,
+          reply: `💰 कुल बिक्री: रु. ${totalRev.toLocaleString("en-NP")}/- (${totalRows} बिल)\nअनुमानित नाफा (३०%): रु. ${profit.toLocaleString("en-NP", { maximumFractionDigits: 0 })}/-`,
           source: `Grounded: ${summary.file_name}`,
         };
       }
 
       // 6. General Stock and Low Stock Queries
       if (q.includes("सकिन") || q.includes("स्टक") || q.includes("न्यून") || q.includes("stock") || q.includes("restock") || q.includes("sakina")) {
-        const item1 = topItems[0]?.name || "पहिलो मुख्य सामान";
-        const item2 = topItems[1]?.name || "दोस्रो मुख्य सामान";
+        const item1 = topItems[0]?.name || "मुख्य सामान १";
+        const item2 = topItems[1]?.name || "मुख्य सामान २";
         return {
-          reply: `तपाईंको स्टोरको दैनिक बिक्री गति हेर्दा '${item1}' र '${item2}' न्यून स्टक अलर्टमा छन्। ग्राहक नफर्कून् भन्नाका लागि आगामी शनिबारअघि नै थप अर्डर गर्न सुझाव दिइन्छ।`,
+          reply: `⚠️ न्यून स्टक: '${item1}' र '${item2}' को स्टक सकिन लागेको छ। शनिबारको चाप अगावै मगाउनुहोला।`,
           source: `Grounded: ${summary.file_name}`,
         };
       }
@@ -185,7 +180,7 @@ export function BajarSathiDrawer({
 
     // Default Fallback
     return {
-      reply: `तपाईंको स्टोर (${storeName}) को कारोबार राम्रो गतिमा छ। धेरै बिक्री हुने सामानहरूको मौज्दात आगामी शनिबारको चापलाई ध्यान दिएर समयमै मगाउनुहोला। तपाईंले सामानको भाउ, मौज्दात वा नाफाबारे सोध्न सक्नुहुन्छ!`,
+      reply: `तपाईंको पसल '${storeName}' को कारोबार राम्रो गतिमा छ। स्टक, नाफा वा बिक्री विश्लेषणबारे केही सोध्न सक्नुहुन्छ!`,
       source: "RetailIQ Grounded AI",
     };
   };
@@ -250,10 +245,10 @@ export function BajarSathiDrawer({
       />
 
       {/* Slide-over Drawer Panel */}
-      <div className="fixed inset-y-0 right-0 flex max-w-full pl-6">
-        <div className="w-screen max-w-md sm:max-w-lg bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col h-full z-10 animate-in slide-in-from-right duration-300">
+      <div className="fixed inset-y-0 right-0 flex max-w-full pl-4">
+        <div className="w-screen max-w-sm sm:max-w-md bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col h-full z-10 animate-in slide-in-from-right duration-300">
           {/* Header */}
-          <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/90 backdrop-blur-md">
+          <div className="p-3.5 sm:p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90 backdrop-blur-md">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-xl shadow-lg shadow-emerald-500/20">
                 🤖
