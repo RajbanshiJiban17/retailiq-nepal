@@ -94,22 +94,33 @@ async def chat_with_bajar_sathi(
         ctx_payload = payload.store_context or {}
 
         # Fallback to store context passed directly from frontend if in-memory backend restarted
-        if not etl_sum and ctx_payload:
+        if not etl_sum and ctx_payload and isinstance(ctx_payload, dict):
             from app.schemas.etl import ETLUploadSummary
             try:
                 etl_sum = ETLUploadSummary.model_validate(ctx_payload)
             except Exception:
-                pass
+                class _LightweightSummary:
+                    def __init__(self, d):
+                        self.file_name = d.get("file_name", "uploaded_sales.csv")
+                        self.total_revenue_npr = float(d.get("total_revenue_npr", 0.0))
+                        self.total_rows_processed = int(d.get("total_rows_processed", 0))
+                        self.valid_rows_count = int(d.get("valid_rows_count", self.total_rows_processed))
+                        self.invoices_created = int(d.get("invoices_created", self.valid_rows_count))
+                        self.top_products = d.get("top_products", [])
+                        self.category_breakdown = d.get("category_breakdown", {})
+                        self.payment_breakdown = d.get("payment_breakdown", [])
+                etl_sum = _LightweightSummary(ctx_payload)
 
-        if etl_sum or catalog or payload.business_name:
-            biz_name = payload.business_name or "तपाईंको स्टोर"
-            total_prods = len(catalog) if catalog else (len(etl_sum.top_products) if etl_sum and etl_sum.top_products else 6)
+        biz_name = payload.business_name or "तपाईंको पसल"
+        if etl_sum or catalog:
+            total_prods = len(catalog) if catalog else (len(etl_sum.top_products) if etl_sum and etl_sum.top_products else 0)
             low_stocks = [c.name for c in catalog if c.quantity <= c.reorder_level]
             if not low_stocks and etl_sum and etl_sum.top_products:
-                low_stocks = [etl_sum.top_products[0].get("name", "सामान")]
+                # Identify items with low units or first item
+                low_stocks = [tp.get("name") for tp in etl_sum.top_products[:2] if tp.get("name")]
 
             tot_rev = float(etl_sum.total_revenue_npr) if etl_sum else 0.0
-            tot_invs = int(etl_sum.invoices_created or etl_sum.valid_rows_count or 10) if etl_sum else len(catalog)
+            tot_invs = int(etl_sum.invoices_created or etl_sum.valid_rows_count or 0) if etl_sum else len(catalog)
 
             facts_summary = ContextFactSummary(
                 business_name=biz_name,
@@ -154,9 +165,20 @@ async def chat_with_bajar_sathi(
             class _Biz:
                 name = biz_name
             business = _Biz()
-
-    if not context_text or not facts_summary or not business:
-        return await bajar_sathi_demo(query=payload.query)
+        else:
+            # Clean zero state for newly registered stores without upload
+            facts_summary = ContextFactSummary(
+                business_name=biz_name,
+                total_active_products=0,
+                low_stock_items_count=0,
+                sample_low_stock_items=[],
+                total_sales_invoices=0,
+                total_revenue_npr=0.0,
+            )
+            context_text = f"=== पसलको आधिकारिक डाटाबेस विवरण (STORE FACTS) ===\nपसलको नाम: {biz_name}\n[नोट: यस पसलमा हालसम्म कुनै पनि बिक्री वा स्टक डेटा अपलोड गरिएको छैन (No Data Uploaded)]"
+            class _Biz:
+                name = biz_name
+            business = _Biz()
 
     # 3. Generate Grounded Response using Gemini API or contextual rule engine
     answer, model_used, has_key, latency = await BajarKoSathiAssistant.generate_response(

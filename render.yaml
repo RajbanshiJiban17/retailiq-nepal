@@ -48,7 +48,7 @@ services:
         sync: false # Set securely in Render dashboard
 
       - key: GEMINI_MODEL
-        value: gemini-3.6-flash
+        value: gemini-2.5-flash
 
       # Allowed CORS Origins (Render Frontend + Vercel + Local Dev)
       - key: BACKEND_CORS_ORIGINS

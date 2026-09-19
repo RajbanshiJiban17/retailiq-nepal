@@ -255,17 +255,10 @@ export function BajarSathiWidget({
       };
     }
 
-    // Default Fallback
-    let reply = `तपाईंको स्टोर (${storeName}) को कारोबार राम्रो गतिमा छ। धेरै बिक्री हुने सामानहरूको मौज्दात आगामी शनिबारको चापलाई ध्यान दिएर समयमै मगाउनुहोला।`;
-    if (q.includes("नाफा")) {
-      reply = `यो महिनाको हालसम्मको कुल नाफा रु. २,४८,५००/- पुगेको छ, जुन अघिल्लो महिना भन्दा १८.२% बढी छ।`;
-    } else if (q.includes("बिक्री")) {
-      reply = `सबैभन्दा धेरै बिक्री भएका सामानहरूमा Wai Wai Chicken Noodles र Fortune Sunflower Oil रहेका छन्।`;
-    }
-
+    // Default Fallback when no summary is loaded
     return {
-      reply,
-      source: "RetailIQ Grounded AI",
+      reply: `तपाईंको पसल '${storeName}' मा हालसम्म कुनै बिक्री वा स्टक डेटा अपलोड गरिएको छैन।\nवास्तविक हिसाब (सबैभन्दा धेरै वा कम बिक्ने सामान, नाफा, वा स्टक अलर्ट) हेर्नका लागि कृपया पहिले ड्यासबोर्डमा आफ्नो Excel/CSV फाइल अपलोड गर्नुहोस् वा 'नमूना डाटा' लोड गर्नुहोस्।`,
+      source: "RetailIQ AI Advisor",
     };
   };
 

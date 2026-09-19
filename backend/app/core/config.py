@@ -18,7 +18,7 @@ class Settings(BaseSettings):
 
     # Gemini API Settings for Bajar ko Sathi
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-3.6-flash"
+    GEMINI_MODEL: str = "gemini-2.5-flash"
 
     # JWT Authentication & Cryptography
     SECRET_KEY: str = "retailiq_nepal_jwt_super_secret_key_dev_2026_change_in_production"
