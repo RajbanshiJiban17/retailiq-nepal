@@ -24,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import { UserProfile, CurrentSubscription } from "@/types";
+import { getNepaliDate } from "@/lib/nepaliDate";
 
 interface Props {
   storeName: string;
@@ -371,9 +372,9 @@ export function AppSidebar({
               </div>
 
               <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1" title={getNepaliDate().adDateString}>
                   <Calendar className="h-3 w-3 text-emerald-400" />
-                  २०८३ भाद्र २५
+                  {getNepaliDate().shortDateString}
                 </span>
                 <span className="text-emerald-400 font-mono">v1.2 Nepal</span>
               </div>

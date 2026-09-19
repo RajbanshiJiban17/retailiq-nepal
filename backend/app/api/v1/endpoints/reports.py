@@ -129,11 +129,13 @@ async def download_demo_pdf():
     now = datetime.now(timezone.utc)
     start = now - timedelta(days=7)
 
+    from app.utils.nepali_date import get_current_nepali_date_str
+
     demo_data = WeeklyReportData(
         report_id=f"DEMO-{now.strftime('%Y%m%d')}-001",
         business_id="demo-pashupati-001",
         generated_at=now,
-        nepali_date="२०८३ भाद्र २५, बिहीबार",
+        nepali_date=get_current_nepali_date_str(now),
         week_label=f"{start.strftime('%Y-%m-%d')} देखि {now.strftime('%Y-%m-%d')}",
         store=StoreProfile(
             name="पशुपति किराना तथा जनरल स्टोर (Pashupati Kirana)",

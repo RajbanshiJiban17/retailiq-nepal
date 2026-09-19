@@ -202,11 +202,13 @@ class ReportDataCollector:
 
         report_id = f"REP-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
 
+        from app.utils.nepali_date import get_current_nepali_date_str
+
         return WeeklyReportData(
             report_id=report_id,
             business_id=str(biz_uuid),
             generated_at=now,
-            nepali_date="२०८३ भाद्र २५",
+            nepali_date=get_current_nepali_date_str(now),
             week_label=f"{start_date.strftime('%Y-%m-%d')} देखि {now.strftime('%Y-%m-%d')}",
             store=store_profile,
             finance=finance_summary,

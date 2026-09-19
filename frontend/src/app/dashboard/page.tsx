@@ -20,6 +20,7 @@ import { MerchantDirectoryModal } from "@/components/dashboard/MerchantDirectory
 import { InventoryManagementModal } from "@/components/dashboard/InventoryManagementModal";
 import { UserProfile, ETLUploadSummary, CurrentSubscription } from "@/types";
 import { loginUser, fetchCurrentSubscription, fetchRegisteredMerchants } from "@/lib/api";
+import { getNepaliDate } from "@/lib/nepaliDate";
 import {
   Building2,
   FileSpreadsheet,
@@ -415,8 +416,13 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center gap-3">
               <div className="text-right">
-                <span className="text-[11px] text-slate-400 uppercase tracking-wider block">नेपाली मिति</span>
-                <span className="text-sm font-semibold text-emerald-400 font-mono">२०८३ भाद्र २५, बिहीबार</span>
+                <span className="text-[11px] text-slate-400 uppercase tracking-wider block">नेपाली मिति (वि.सं.)</span>
+                <span className="text-sm font-semibold text-emerald-400 font-mono">
+                  {getNepaliDate().fullNepaliString}
+                </span>
+                <span className="text-[10px] text-slate-500 block font-mono">
+                  {getNepaliDate().adDateString}
+                </span>
               </div>
             </div>
           </div>
