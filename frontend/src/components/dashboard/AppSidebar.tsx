@@ -35,6 +35,7 @@ interface Props {
   onOpenUpload: () => void;
   onOpenSubscription: () => void;
   onOpenBajarSathi: () => void;
+  onOpenInventoryCrud?: () => void;
   onOpenAuth: () => void;
   onLogout: () => void;
   isMobileOpen: boolean;
@@ -51,6 +52,7 @@ export function AppSidebar({
   onOpenUpload,
   onOpenSubscription,
   onOpenBajarSathi,
+  onOpenInventoryCrud,
   onOpenAuth,
   onLogout,
   isMobileOpen,
@@ -278,6 +280,30 @@ export function AppSidebar({
               <Upload className="h-4 w-4 text-slate-400 group-hover:text-emerald-400" />
               {!collapsed && <span>CSV / Excel अपलोड</span>}
             </button>
+
+            {/* Manage Stock & Items */}
+            {onOpenInventoryCrud && (
+              <button
+                onClick={() => {
+                  onOpenInventoryCrud();
+                  onMobileClose();
+                }}
+                className={`w-full flex items-center rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-300 hover:text-emerald-400 hover:bg-slate-800/60 transition group ${
+                  collapsed ? "justify-center" : "gap-3 justify-between"
+                }`}
+                title="इन्भेन्टरी सम्पादन र व्यवस्थापन"
+              >
+                <div className="flex items-center gap-3">
+                  <Package className="h-4 w-4 text-emerald-400" />
+                  {!collapsed && <span>स्टक सम्पादन (CRUD)</span>}
+                </div>
+                {!collapsed && (
+                  <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full">
+                    Live
+                  </span>
+                )}
+              </button>
+            )}
 
             {/* Subscription */}
             <button

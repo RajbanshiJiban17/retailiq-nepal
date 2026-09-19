@@ -15,8 +15,11 @@ import { PosUploadCard } from "@/components/PosUploadCard";
 import { AuthModal } from "@/components/AuthModal";
 import { SubscriptionModal } from "@/components/SubscriptionModal";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
+import { MerchantAuthGateway } from "@/components/dashboard/MerchantAuthGateway";
+import { MerchantDirectoryModal } from "@/components/dashboard/MerchantDirectoryModal";
+import { InventoryManagementModal } from "@/components/dashboard/InventoryManagementModal";
 import { UserProfile, ETLUploadSummary, CurrentSubscription } from "@/types";
-import { loginUser, fetchCurrentSubscription } from "@/lib/api";
+import { loginUser, fetchCurrentSubscription, fetchRegisteredMerchants } from "@/lib/api";
 import {
   Building2,
   FileSpreadsheet,
@@ -36,12 +39,15 @@ import {
   Crown,
   CreditCard,
   Menu,
+  Store,
+  Package,
 } from "lucide-react";
 
 export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState<"7D" | "30D" | "YTD">("30D");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [etlSummary, setEtlSummary] = useState<ETLUploadSummary | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -51,10 +57,15 @@ export default function DashboardPage() {
   const [activeSection, setActiveSection] = useState("overview");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
+  // New states for merchant directory and live inventory CRUD
+  const [merchantDirectoryOpen, setMerchantDirectoryOpen] = useState(false);
+  const [inventoryModalOpen, setInventoryModalOpen] = useState(false);
+  const [registeredMerchantCount, setRegisteredMerchantCount] = useState<number>(5);
+
   const displayStoreName =
     currentUser?.business_name || "पशुपति किराना तथा सुपरस्टोर";
   const displayTenantId =
-    currentUser?.business_id || "demo-pashupati-001";
+    currentUser?.business_id || "biz-pashupati-001";
 
   const loadData = async () => {
     // Read current user session
@@ -68,21 +79,10 @@ export default function DashboardPage() {
         setCurrentUser(null);
       }
     } else {
-      // Default demo user so the dashboard and sidebar are immediately accessible
-      const defaultDemoUser: UserProfile = {
-        id: "demo-pashupati",
-        email: "admin@retailiq.com.np",
-        full_name: "Pashupati Kirana Admin",
-        business_name: "पशुपति किराना तथा सुपरस्टोर",
-        business_id: "biz-pashupati-001",
-        phone: "9800000000",
-        role: "owner",
-        is_active: true,
-        is_business_owner: true,
-      };
-      userObj = defaultDemoUser;
-      setCurrentUser(defaultDemoUser);
+      // If not logged in, user remains null so MerchantAuthGateway is displayed
+      setCurrentUser(null);
     }
+    setAuthLoading(false);
 
     // Read tenant-isolated uploaded ETL data first, fallback to retailiq_latest_etl
     let savedEtl: string | null = null;
@@ -109,6 +109,16 @@ export default function DashboardPage() {
       setCurrentSubscription(sub);
     } catch {
       // ignore
+    }
+
+    // Fetch registered merchants count
+    try {
+      const merchantsRes = await fetchRegisteredMerchants();
+      if (merchantsRes?.total_count) {
+        setRegisteredMerchantCount(merchantsRes.total_count);
+      }
+    } catch {
+      // keep fallback 5
     }
   };
 
@@ -149,6 +159,31 @@ export default function DashboardPage() {
     setCurrentUser(null);
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white p-4">
+        <div className="flex items-center gap-3">
+          <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm font-semibold text-slate-300">
+            RetailIQ नेपाल प्रमाणीकरण जाँच गर्दै...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // If visitor is unauthenticated, show Commercial Merchant Gateway with live store count & directory
+  if (!currentUser) {
+    return (
+      <MerchantAuthGateway
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          loadData();
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-emerald-500 selection:text-white flex">
       {/* Enterprise Left Sidebar */}
@@ -162,6 +197,7 @@ export default function DashboardPage() {
         onOpenUpload={() => setUploadModalOpen(true)}
         onOpenSubscription={() => setSubscriptionModalOpen(true)}
         onOpenBajarSathi={() => setBajarSathiDrawerOpen(true)}
+        onOpenInventoryCrud={() => setInventoryModalOpen(true)}
         onOpenAuth={() => setAuthModalOpen(true)}
         onLogout={handleLogout}
         isMobileOpen={mobileSidebarOpen}
@@ -170,7 +206,7 @@ export default function DashboardPage() {
 
       {/* Main Container Offset by Sidebar on Desktop */}
       <div className="flex-1 flex flex-col min-w-0 transition-all duration-300">
-        {/* Top Navigation */}
+        {/* Top Navigation - Executive Store Header */}
         <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div className="flex items-center gap-3 sm:gap-4">
@@ -200,7 +236,7 @@ export default function DashboardPage() {
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   <Building2 className="h-4 w-4" />
                 </div>
-                <div className="max-w-[180px] sm:max-w-[280px] truncate">
+                <div className="max-w-[170px] sm:max-w-[260px] truncate">
                   <span className="text-xs sm:text-sm text-white font-bold block truncate">
                     {displayStoreName}
                   </span>
@@ -211,11 +247,33 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {/* Clean Executive Navbar Controls (No duplicate buttons from sidebar) */}
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Registered Merchants Counter Button */}
+              <button
+                onClick={() => setMerchantDirectoryOpen(true)}
+                className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-800 text-emerald-400 hover:border-emerald-500/50 hover:bg-slate-850 transition"
+                title="दर्ता भएका सबै पसलहरूको विवरण हेर्नुहोस् (View Merchant Directory)"
+              >
+                <Store className="h-3.5 w-3.5 text-emerald-400" />
+                <span className="font-bold">{registeredMerchantCount}+</span>
+                <span className="hidden md:inline text-slate-300">पसलहरू दर्ता</span>
+              </button>
+
+              {/* Stored Items CRUD Shortcut */}
+              <button
+                onClick={() => setInventoryModalOpen(true)}
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-200 hover:text-white hover:border-slate-700 transition"
+                title="इन्भेन्टरी सम्पादन र व्यवस्थापन (CRUD)"
+              >
+                <Package className="h-3.5 w-3.5 text-emerald-400" />
+                <span>स्टक सम्पादन</span>
+              </button>
+
               {/* Active Subscription Plan Badge & Upgrade Button */}
               <button
                 onClick={() => setSubscriptionModalOpen(true)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border shadow-sm ${
+                className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition border shadow-sm ${
                   currentSubscription?.plan_id === "enterprise"
                     ? "bg-purple-950/70 border-purple-500/50 text-purple-300 hover:bg-purple-900/60 shadow-purple-950/40"
                     : currentSubscription?.plan_id === "pro"
@@ -235,79 +293,27 @@ export default function DashboardPage() {
                 <span className="text-[10px] text-amber-400/90 font-normal underline ml-0.5">अपग्रेड</span>
               </button>
 
-              {/* Upload Sales CSV Button directly on Dashboard */}
-              <button
-                onClick={() => setUploadModalOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-bold text-white hover:from-emerald-500 hover:to-teal-500 transition shadow-md shadow-emerald-600/25"
-              >
-                <Upload className="h-3.5 w-3.5" />
-                <span className="hidden md:inline">CSV / Excel अपलोड</span>
-              </button>
-
-              {/* Time Filter Tabs */}
-              <div className="hidden sm:flex bg-slate-900 border border-slate-800 rounded-xl p-1 items-center gap-1 text-xs">
-                {(["7D", "30D", "YTD"] as const).map((range) => (
+              {/* User Profile & Logout */}
+              {currentUser && (
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <div className="hidden lg:flex items-center gap-2 pl-2 border-l border-slate-800">
+                    <div className="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-bold text-xs">
+                      {currentUser.full_name?.charAt(0) || "M"}
+                    </div>
+                    <span className="text-xs text-slate-300 max-w-[120px] truncate">
+                      {currentUser.full_name}
+                    </span>
+                  </div>
                   <button
-                    key={range}
-                    onClick={() => setTimeRange(range)}
-                    className={`px-3 py-1 rounded-lg font-medium transition-all ${
-                      timeRange === range
-                        ? "bg-emerald-600 text-white shadow-sm"
-                        : "text-slate-400 hover:text-slate-200"
-                    }`}
+                    onClick={handleLogout}
+                    className="text-xs text-slate-400 hover:text-rose-400 px-2.5 py-1.5 rounded-lg border border-slate-800 hover:border-slate-700 transition flex items-center gap-1"
+                    title="लगआउट गर्नुहोस्"
                   >
-                    {range === "7D" ? "७ दिन" : range === "30D" ? "३० दिन" : "वर्षिक"}
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">लगआउट</span>
                   </button>
-                ))}
-              </div>
-
-              {/* Bajar ko Sathi AI Drawer Trigger Button */}
-              <button
-                onClick={() => setBajarSathiDrawerOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 hover:brightness-110 shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95"
-                title="बजारको साथी AI खोल्नुहोस्"
-              >
-                <span>🤖</span>
-                <span className="hidden sm:inline">बजारको साथी AI</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping" />
-              </button>
-
-              {/* Refresh button */}
-              <button
-                onClick={handleRefresh}
-                className="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs p-2 sm:px-3 sm:py-1.5 rounded-xl transition flex items-center gap-1.5"
-                title="Refresh Data"
-              >
-                <span className={`inline-block ${isRefreshing ? "animate-spin" : ""}`}>🔄</span>
-                <span className="hidden lg:inline">ताजा गर्नुहोस्</span>
-              </button>
-
-              {/* User Login/Switch or Home */}
-              {currentUser ? (
-                <button
-                  onClick={handleLogout}
-                  className="text-xs text-slate-400 hover:text-rose-400 px-2.5 py-1.5 rounded-lg border border-slate-800 hover:border-slate-700 transition flex items-center gap-1"
-                  title="Log Out"
-                >
-                  <LogOut className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">लगआउट</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => setAuthModalOpen(true)}
-                  className="text-xs text-emerald-400 hover:text-emerald-300 px-2.5 py-1.5 rounded-lg border border-emerald-800/60 bg-emerald-950/40 transition flex items-center gap-1"
-                >
-                  <LogIn className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">लगइन / नयाँ दर्ता</span>
-                </button>
+                </div>
               )}
-
-              <Link
-                href="/"
-                className="text-xs text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg border border-slate-800 hover:border-slate-700 transition"
-              >
-                Home →
-              </Link>
             </div>
           </div>
         </header>
@@ -525,6 +531,41 @@ export default function DashboardPage() {
         currentPlanId={currentSubscription?.plan_id || currentSubscription?.tier}
         onPlanUpgraded={(newSub: CurrentSubscription) => {
           setCurrentSubscription(newSub);
+        }}
+      />
+
+      {/* Live Inventory CRUD Database Management Modal */}
+      <InventoryManagementModal
+        isOpen={inventoryModalOpen}
+        onClose={() => setInventoryModalOpen(false)}
+        businessId={currentUser?.business_id}
+        storeName={displayStoreName}
+        onDataChanged={() => {
+          loadData();
+        }}
+      />
+
+      {/* Registered Merchants Directory Roster Modal */}
+      <MerchantDirectoryModal
+        isOpen={merchantDirectoryOpen}
+        onClose={() => setMerchantDirectoryOpen(false)}
+        currentBusinessId={currentUser?.business_id}
+        onSelectMerchant={(m) => {
+          const newUser: UserProfile = {
+            id: m.id || "user-" + (m.business_id || m.id),
+            email: m.email || "store@retailiq.com.np",
+            full_name: m.owner_name || "Merchant Owner",
+            business_name: m.business_name,
+            business_id: m.business_id || m.id,
+            phone: m.phone || "9800000000",
+            role: "owner",
+            is_active: true,
+            is_business_owner: true,
+          };
+          localStorage.setItem("retailiq_user", JSON.stringify(newUser));
+          setCurrentUser(newUser);
+          setMerchantDirectoryOpen(false);
+          loadData();
         }}
       />
     </div>
