@@ -1,5 +1,5 @@
 # RetailIQ Nepal - Render Infrastructure as Code Blueprint
-# Zero-Budget Production Deployment (Docker Web Service + Managed PostgreSQL)
+# Zero-Budget Production Deployment (Docker Web Service + Managed PostgreSQL + Static Frontend)
 # Region: Singapore (sin) - Closest low-latency cluster for Nepal
 
 services:
@@ -50,12 +50,29 @@ services:
       - key: GEMINI_MODEL
         value: gemini-3.6-flash
 
-      # Allowed CORS Origins (Vercel Frontend + Local Dev)
+      # Allowed CORS Origins (Render Frontend + Vercel + Local Dev)
       - key: BACKEND_CORS_ORIGINS
-        value: '["https://retailiq-nepal.vercel.app","http://localhost:3000"]'
+        value: '["https://retailiq-nepal.onrender.com","https://retailiq-nepal.vercel.app","http://localhost:3000"]'
+
+  # ============================================================================
+  # 2. Next.js Frontend Static Site (Zero-Budget Static Hosting)
+  # ============================================================================
+  - type: web
+    name: retailiq-nepal
+    env: static
+    plan: free
+    region: singapore
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: out
+    autoDeploy: true
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
 
 # ============================================================================
-# 2. Managed PostgreSQL Database (Render Free Tier)
+# 3. Managed PostgreSQL Database (Render Free Tier)
 # ============================================================================
 databases:
   - name: retailiq-nepal-db
