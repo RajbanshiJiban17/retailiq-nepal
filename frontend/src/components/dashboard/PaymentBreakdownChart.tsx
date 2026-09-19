@@ -26,8 +26,10 @@ const DEFAULT_PAYMENT_DATA: PaymentData[] = [
   { name: "Credit / Udharo (उधारो)", value: 26280, percentage: 3, color: "#ef4444", nepaliLabel: "उधारो" },
 ];
 
-export function PaymentBreakdownChart({ data = DEFAULT_PAYMENT_DATA }: { data?: PaymentData[] }) {
-  const totalVolume = data.reduce((acc, curr) => acc + curr.value, 0);
+export function PaymentBreakdownChart({ data }: { data?: PaymentData[] }) {
+  const hasData = Boolean(data && data.length > 0);
+  const paymentList = data || [];
+  const totalVolume = paymentList.reduce((acc, curr) => acc + curr.value, 0);
 
   return (
     <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl backdrop-blur-sm flex flex-col justify-between">
@@ -40,22 +42,35 @@ export function PaymentBreakdownChart({ data = DEFAULT_PAYMENT_DATA }: { data?: 
             </span>
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Breakdown across QR, Cash, Wallets & Credit
+            {hasData ? "Breakdown across QR, Cash, Wallets & Credit" : "डाटा अपलोड आवश्यक"}
           </p>
         </div>
-        <div className="text-right">
-          <span className="text-xs text-slate-400 block">Total Volume</span>
-          <span className="text-sm font-semibold text-slate-200">
-            Rs. {(totalVolume / 1000).toFixed(1)}k
-          </span>
-        </div>
+        {hasData && (
+          <div className="text-right">
+            <span className="text-xs text-slate-400 block">Total Volume</span>
+            <span className="text-sm font-semibold text-slate-200">
+              Rs. {(totalVolume / 1000).toFixed(1)}k
+            </span>
+          </div>
+        )}
       </div>
 
-      <div className="h-64 w-full relative">
+      {!hasData ? (
+        <div className="flex flex-col items-center justify-center h-64 text-center p-4 text-slate-400">
+          <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-500 mb-2">
+            💳
+          </div>
+          <p className="text-xs font-bold text-slate-300">भुक्तानी डाटा उपलब्ध छैन</p>
+          <p className="text-[11px] text-slate-500 max-w-[220px] mt-1">
+            POS डाटा अपलोड गरेपछि Fonepay QR, नगद, र डिजिटल वालेटको हिस्सा यहाँ देखिनेछ।
+          </p>
+        </div>
+      ) : (
+        <div className="h-64 w-full relative">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
-              data={data}
+              data={paymentList}
               cx="50%"
               cy="50%"
               innerRadius={58}
@@ -63,7 +78,7 @@ export function PaymentBreakdownChart({ data = DEFAULT_PAYMENT_DATA }: { data?: 
               paddingAngle={4}
               dataKey="value"
             >
-              {data.map((entry, index) => (
+              {paymentList.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} stroke="#0f172a" strokeWidth={2} />
               ))}
             </Pie>
@@ -92,26 +107,33 @@ export function PaymentBreakdownChart({ data = DEFAULT_PAYMENT_DATA }: { data?: 
           </PieChart>
         </ResponsiveContainer>
 
-        {/* Center label */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-[11px] font-medium text-slate-400">Fonepay / QR</span>
-          <span className="text-lg font-black text-emerald-400">42%</span>
-          <span className="text-[10px] text-slate-400">Dominant</span>
+          {/* Center label */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span className="text-[11px] font-medium text-slate-400">
+              {paymentList[0]?.name || "भुक्तानी"}
+            </span>
+            <span className="text-lg font-black text-emerald-400">
+              {paymentList[0]?.percentage || 0}%
+            </span>
+            <span className="text-[10px] text-slate-400">मुख्य माध्यम</span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Legend list */}
-      <div className="mt-4 pt-4 border-t border-slate-800/80 grid grid-cols-2 gap-2 text-xs">
-        {data.slice(0, 4).map((item) => (
-          <div key={item.name} className="flex items-center justify-between text-slate-300 bg-slate-950/40 px-2.5 py-1.5 rounded-lg border border-slate-800/40">
-            <div className="flex items-center gap-1.5 truncate">
-              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-              <span className="truncate">{item.name}</span>
+      {hasData && (
+        <div className="mt-4 pt-4 border-t border-slate-800/80 grid grid-cols-2 gap-2 text-xs">
+          {paymentList.slice(0, 4).map((item) => (
+            <div key={item.name} className="flex items-center justify-between text-slate-300 bg-slate-950/40 px-2.5 py-1.5 rounded-lg border border-slate-800/40">
+              <div className="flex items-center gap-1.5 truncate">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                <span className="truncate">{item.nepaliLabel || item.name}</span>
+              </div>
+              <span className="font-mono font-medium text-slate-400 shrink-0 ml-1">{item.percentage}%</span>
             </div>
-            <span className="font-mono font-medium text-slate-400 shrink-0 ml-1">{item.percentage}%</span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

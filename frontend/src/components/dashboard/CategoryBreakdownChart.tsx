@@ -51,17 +51,8 @@ export function CategoryBreakdownChart({ summary }: Props) {
     }
   }
 
-  // Realistic default category distribution for Nepali Kirana / Supermarket
-  if (categoryData.length === 0) {
-    const totalRev = Number(summary?.total_revenue_npr) || 385000;
-    categoryData = [
-      { name: "किराना तथा खाद्यान्न (Rice/Flour)", value: Math.round(totalRev * 0.38), share: 38 },
-      { name: "खाजा तथा चाउचाउ (Noodles/Snacks)", value: Math.round(totalRev * 0.24), share: 24 },
-      { name: "तेल तथा घ्यू (Oils & Ghee)", value: Math.round(totalRev * 0.18), share: 18 },
-      { name: "पेय पदार्थ तथा चिया (Beverages & Tea)", value: Math.round(totalRev * 0.12), share: 12 },
-      { name: "अन्य घरायसी सामान (Household)", value: Math.round(totalRev * 0.08), share: 8 },
-    ];
-  }
+  // If no summary or no products uploaded, categoryData remains empty
+  const hasData = categoryData.length > 0;
 
   function CustomTooltip({ active, payload }: any) {
     if (active && payload && payload.length) {
@@ -107,56 +98,70 @@ export function CategoryBreakdownChart({ summary }: Props) {
         </div>
 
         {/* Chart */}
-        <div className="mt-4 h-[250px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Tooltip content={<CustomTooltip />} />
-              <Pie
-                data={categoryData}
-                cx="50%"
-                cy="50%"
-                innerRadius={55}
-                outerRadius={85}
-                paddingAngle={4}
-                dataKey="value"
-                onMouseEnter={(_, index) => setActiveIndex(index)}
-                onMouseLeave={() => setActiveIndex(null)}
-              >
-                {categoryData.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
-                    stroke="#0f172a"
-                    strokeWidth={activeIndex === index ? 3 : 1}
-                    className="transition-all duration-200 cursor-pointer"
-                  />
-                ))}
-              </Pie>
-              <Legend
-                verticalAlign="bottom"
-                iconType="circle"
-                wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }}
-                formatter={(val, entry: any) => (
-                  <span className="text-slate-300 font-medium">
-                    {val} ({entry.payload.share}%)
-                  </span>
-                )}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
+        {!hasData ? (
+          <div className="flex flex-col items-center justify-center h-[250px] text-center p-4 text-slate-400">
+            <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-500 mb-2">
+              <PieIcon className="h-6 w-6 text-purple-400/60" />
+            </div>
+            <p className="text-xs font-bold text-slate-300">कुनै वर्ग विवरण छैन</p>
+            <p className="text-[11px] text-slate-500 max-w-[200px] mt-1">
+              POS डाटा अपलोड गरेपछि सामानहरूको वर्ग हिस्सा यहाँ देखिनेछ।
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Tooltip content={<CustomTooltip />} />
+                <Pie
+                  data={categoryData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={85}
+                  paddingAngle={4}
+                  dataKey="value"
+                  onMouseEnter={(_, index) => setActiveIndex(index)}
+                  onMouseLeave={() => setActiveIndex(null)}
+                >
+                  {categoryData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
+                      stroke="#0f172a"
+                      strokeWidth={activeIndex === index ? 3 : 1}
+                      className="transition-all duration-200 cursor-pointer"
+                    />
+                  ))}
+                </Pie>
+                <Legend
+                  verticalAlign="bottom"
+                  iconType="circle"
+                  wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }}
+                  formatter={(val, entry: any) => (
+                    <span className="text-slate-300 font-medium">
+                      {val} ({entry.payload.share}%)
+                    </span>
+                  )}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
 
       {/* Top Category Badge */}
-      <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-        <span className="flex items-center gap-1.5">
-          <Layers className="h-3.5 w-3.5 text-emerald-400" />
-          शीर्ष विधा: <strong className="text-white">{categoryData[0]?.name.split("(")[0]}</strong>
-        </span>
-        <span className="text-emerald-400 font-semibold font-mono">
-          {categoryData[0]?.share}% योगदान
-        </span>
-      </div>
+      {hasData && (
+        <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+          <span className="flex items-center gap-1.5">
+            <Layers className="h-3.5 w-3.5 text-emerald-400" />
+            शीर्ष विधा: <strong className="text-white">{categoryData[0]?.name.split("(")[0]}</strong>
+          </span>
+          <span className="text-emerald-400 font-semibold font-mono">
+            {categoryData[0]?.share}% योगदान
+          </span>
+        </div>
+      )}
     </div>
   );
 }

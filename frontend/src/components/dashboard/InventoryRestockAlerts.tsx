@@ -115,7 +115,7 @@ export function InventoryRestockAlerts({ summary, items }: InventoryRestockAlert
       });
     }
 
-    return DEFAULT_RESTOCK_ITEMS;
+    return [];
   }, [summary, items]);
 
   const criticalCount = displayItems.filter((i) => i.status === "CRITICAL").length;
@@ -132,24 +132,37 @@ export function InventoryRestockAlerts({ summary, items }: InventoryRestockAlert
               <span className="text-xs font-semibold text-rose-400 bg-rose-950/60 border border-rose-800/60 px-2.5 py-0.5 rounded-full">
                 {lowStockCount} वटा न्यून स्टक
               </span>
-            ) : (
+            ) : displayItems.length > 0 ? (
               <span className="text-xs font-semibold text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2.5 py-0.5 rounded-full">
                 पर्याप्त स्टक
               </span>
-            )}
+            ) : null}
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
             {summary
               ? `अपलोड गरिएको फाइल '${summary.file_name}' का सामानहरूको माग गति र स्टक सकिने दिन (Runout Projections)`
-              : "ML-forecasted runout projections and supplier reorder triggers"}
+              : "स्टक सकिनु अगावै अलर्ट र अर्डर सिफारिस"}
           </p>
         </div>
-        <button className="text-xs text-emerald-400 hover:text-emerald-300 font-medium px-3.5 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-800/40 transition w-fit">
-          Export PO (खरिद आदेश)
-        </button>
+        {displayItems.length > 0 && (
+          <button className="text-xs text-emerald-400 hover:text-emerald-300 font-medium px-3.5 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-800/40 transition w-fit">
+            Export PO (खरिद आदेश)
+          </button>
+        )}
       </div>
 
-      <div className="overflow-x-auto">
+      {displayItems.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-48 text-center p-4 text-slate-400">
+          <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-500 mb-2">
+            🔔
+          </div>
+          <p className="text-xs font-bold text-slate-300">कुनै न्यून स्टक अलर्ट छैन (No Restock Alerts)</p>
+          <p className="text-[11px] text-slate-500 max-w-[280px] mt-1">
+            सबै सामानको मौज्दात सुरक्षित छ वा POS कारोबार डेटा अपलोड गरिएको छैन।
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-xs text-slate-300">
           <thead className="bg-slate-950/60 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
             <tr>
@@ -224,6 +237,7 @@ export function InventoryRestockAlerts({ summary, items }: InventoryRestockAlert
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

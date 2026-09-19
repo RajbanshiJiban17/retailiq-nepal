@@ -143,7 +143,7 @@ export default function DashboardPage() {
   };
 
   const handleClearUploadedData = () => {
-    if (confirm("के तपाईं अपलोड गरिएको डाटा हटाएर डिफल्ट डेमो डाटामा फर्कन चाहनुहुन्छ?")) {
+    if (confirm("के तपाईं अपलोड गरिएको डाटा हटाएर खाली गर्न चाहनुहुन्छ? (Are you sure you want to clear the sales data?)")) {
       if (currentUser?.business_id) {
         localStorage.removeItem(`retailiq_etl_${currentUser.business_id}`);
       }
@@ -152,6 +152,57 @@ export default function DashboardPage() {
       setEtlSummary(null);
       window.dispatchEvent(new Event("retailiq_data_updated"));
     }
+  };
+
+  const handleLoadSampleData = () => {
+    const sampleSummary: ETLUploadSummary = {
+      status: "completed",
+      business_id: currentUser?.business_id || "retailiq_demo",
+      file_name: "nepal_kirana_sales_sample.csv",
+      upload_timestamp: new Date().toISOString(),
+      total_rows_processed: 1248,
+      valid_rows_count: 1248,
+      invalid_rows_count: 0,
+      invoices_created: 1248,
+      items_recorded: 2450,
+      products_auto_created: 18,
+      total_revenue_npr: 485200,
+      category_breakdown: {
+        "किराना तथा खाद्यान्न": 184376,
+        "खाजा तथा चाउचाउ": 116448,
+        "तेल तथा घ्यू": 87336,
+        "पेय पदार्थ": 58224,
+        "अन्य घरायसी": 38816,
+      },
+      top_products: [
+        { name: "Aanadi Basmati Rice 25kg", sku: "BAS-RICE-25KG", category: "Grains", unitsSold: 95, revenue: 270750 },
+        { name: "Ilam Orthodox CTC Tea 500g", sku: "CTM-TEA-500G", category: "Beverages", unitsSold: 820, revenue: 262400 },
+        { name: "DDC Pure Cow Ghee 1L", sku: "DDC-GHEE-1L", category: "Dairy", unitsSold: 210, revenue: 241500 },
+        { name: "Current Dairy Butter 500g", sku: "CUR-BUTTER-500G", category: "Dairy", unitsSold: 340, revenue: 153000 },
+        { name: "Wai Wai Quick 75g (Box)", sku: "WAI-NOOD-75G", category: "Snacks", unitsSold: 460, revenue: 115000 },
+      ],
+      monthly_trend: [
+        { month: "Baisakh", monthNepali: "बैशाख", revenue: 380000, profit: 114000, orders: 980 },
+        { month: "Jestha", monthNepali: "जेठ", revenue: 410000, profit: 123000, orders: 1040 },
+        { month: "Ashadh", monthNepali: "असार", revenue: 445000, profit: 133500, orders: 1120 },
+        { month: "Shrawan", monthNepali: "साउन", revenue: 395000, profit: 118500, orders: 1010 },
+        { month: "Bhadra", monthNepali: "भदौ", revenue: 460000, profit: 138000, orders: 1180 },
+        { month: "Ashwin", monthNepali: "असोज", revenue: 530000, profit: 164300, orders: 1390 },
+      ],
+      payment_breakdown: [
+        { name: "Fonepay / QR", value: 203784, percentage: 42, color: "#10b981", nepaliLabel: "फोनपे / QR" },
+        { name: "Cash (नगद)", value: 155264, percentage: 32, color: "#f59e0b", nepaliLabel: "नगद" },
+        { name: "eSewa / Khalti", value: 87336, percentage: 18, color: "#6366f1", nepaliLabel: "ईसेवा / खल्ती" },
+        { name: "Card / Credit", value: 38816, percentage: 8, color: "#3b82f6", nepaliLabel: "कार्ड / उधारो" },
+      ],
+    };
+
+    if (currentUser?.business_id) {
+      localStorage.setItem(`retailiq_etl_${currentUser.business_id}`, JSON.stringify(sampleSummary));
+    }
+    localStorage.setItem("retailiq_latest_etl", JSON.stringify(sampleSummary));
+    setEtlSummary(sampleSummary);
+    window.dispatchEvent(new Event("retailiq_data_updated"));
   };
 
   const handleLogout = () => {
@@ -321,7 +372,7 @@ export default function DashboardPage() {
 
         {/* Main Content Area */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 w-full">
-          {/* Active Uploaded Dataset Banner */}
+          {/* Active Uploaded Dataset Banner or Empty State Notice */}
           {etlSummary ? (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-emerald-950/60 via-slate-900 to-slate-900 border border-emerald-500/40 rounded-2xl p-4 shadow-lg">
               <div className="flex items-center gap-3">
@@ -331,7 +382,7 @@ export default function DashboardPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                      अपलोड गरिएको फाइल सक्रिय छ (Active Dataset)
+                      अपलोड गरिएको वास्तविक डाटा सक्रिय छ
                     </span>
                     <span className="text-[11px] bg-emerald-500/20 text-emerald-300 font-mono px-2 py-0.5 rounded-full border border-emerald-500/30">
                       {etlSummary.file_name}
@@ -349,40 +400,56 @@ export default function DashboardPage() {
                   className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 px-3 py-1.5 text-xs text-slate-200 hover:text-white transition"
                 >
                   <Upload className="h-3.5 w-3.5 text-emerald-400" />
-                  अर्को CSV हाल्नुहोस्
+                  अर्को फाइल हाल्नुहोस्
                 </button>
                 <button
                   onClick={handleClearUploadedData}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-slate-850 hover:bg-rose-950/50 border border-slate-700 hover:border-rose-800/60 px-3 py-1.5 text-xs text-slate-400 hover:text-rose-300 transition"
-                  title="Reset to default demo data"
+                  title="डाटा हटाएर शून्य बनाउनुहोस्"
                 >
                   <RotateCcw className="h-3 w-3" />
-                  डिफल्ट रिसेट
+                  डाटा खाली गर्नुहोस्
                 </button>
               </div>
             </div>
           ) : (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-amber-950/30 via-slate-900 to-slate-900 border border-amber-500/30 rounded-2xl p-5 shadow-lg">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-800 text-slate-400 border border-slate-700">
-                  <FileSpreadsheet className="h-4 w-4 text-emerald-400" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  <FileSpreadsheet className="h-5 w-5" />
                 </div>
                 <div>
-                  <h4 className="text-xs sm:text-sm font-bold text-white">
-                    आफ्नो पसलको वास्तविक बिक्री डाटा हेर्न चाहनुहुन्छ?
-                  </h4>
-                  <p className="text-xs text-slate-400">
-                    Tally, Excel वा POS बाट निकालिएको कुनै पनि बिक्री CSV अपलोड गर्नुहोस्, प्रणालीले तत्काल हिसाब विश्लेषण गर्छ।
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
+                      बिक्री डाटा अपलोड गरिएको छैन (No Data Uploaded)
+                    </span>
+                    <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full border border-slate-700">
+                      शून्य अवस्था (Zero State)
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-1">
+                    ड्यासबोर्डलाई गतिशील (Dynamic) बनाइएको छ। तपाईंले आफ्नो पसलको Excel वा CSV फाइल अपलोड गरेपछि मात्र वास्तविक हिसाब र चार्टहरू देखिनेछन्।
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setUploadModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 text-xs transition shadow-md shrink-0"
-              >
-                <Upload className="h-3.5 w-3.5" />
-                फाइल अपलोड गर्नुहोस् (Upload CSV)
-              </button>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => setUploadModalOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 text-xs transition shadow-md"
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  फाइल अपलोड गर्नुहोस् (Excel/CSV)
+                </button>
+                <button
+                  onClick={handleLoadSampleData}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:text-white transition"
+                  title="परीक्षणको लागि नमूना डाटा लोड गर्नुहोस्"
+                >
+                  <Sparkles className="h-3 w-3 text-amber-400" />
+                  नमूना डाटा हेर्नुहोस्
+                </button>
+              </div>
             </div>
           )}
 

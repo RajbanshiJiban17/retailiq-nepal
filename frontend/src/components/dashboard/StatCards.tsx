@@ -116,7 +116,52 @@ export function StatCards({ summary }: StatCardsProps) {
           iconColor: "text-cyan-600 dark:text-cyan-400",
         },
       ]
-    : STATS;
+    : [
+        {
+          id: "profit",
+          title: "Gross Profit",
+          titleNepali: "कुल खुद्रा नाफा",
+          value: "रु. ०.००",
+          change: "डाटा अपलोड आवश्यक",
+          isPositive: false,
+          icon: DollarSign,
+          iconBg: "bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800",
+          iconColor: "text-emerald-600 dark:text-emerald-400",
+        },
+        {
+          id: "revenue",
+          title: "Total Sales Revenue",
+          titleNepali: "कुल बिक्री आम्दानी",
+          value: "रु. ०.००",
+          change: "डाटा अपलोड आवश्यक",
+          isPositive: false,
+          icon: TrendingUp,
+          iconBg: "bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800",
+          iconColor: "text-indigo-600 dark:text-indigo-400",
+        },
+        {
+          id: "orders",
+          title: "Invoices & Transactions",
+          titleNepali: "कुल बिक्री बिल संख्या",
+          value: "० बिल",
+          change: "डाटा अपलोड आवश्यक",
+          isPositive: false,
+          icon: ShoppingCart,
+          iconBg: "bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800",
+          iconColor: "text-blue-600 dark:text-blue-400",
+        },
+        {
+          id: "low_stock",
+          title: "Stock Alert",
+          titleNepali: "सामान स्टक अवस्था",
+          value: "० अलर्ट",
+          change: "डाटा अपलोड आवश्यक",
+          isPositive: false,
+          icon: AlertTriangle,
+          iconBg: "bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800",
+          iconColor: "text-amber-600 dark:text-amber-400",
+        },
+      ];
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">

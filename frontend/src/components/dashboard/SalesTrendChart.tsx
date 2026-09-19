@@ -77,7 +77,8 @@ interface SalesTrendChartProps {
 
 export function SalesTrendChart({ data }: SalesTrendChartProps) {
   const [viewMetric, setViewMetric] = useState<"both" | "revenue" | "profit">("both");
-  const chartData = data && data.length > 0 ? data : MONTHLY_SALES_DATA;
+  const hasData = Boolean(data && data.length > 0);
+  const chartData = data || [];
 
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -92,46 +93,59 @@ export function SalesTrendChart({ data }: SalesTrendChartProps) {
             </h3>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            मासिक बिक्री तथा खुद्रा नाफाको तुलनात्मक विश्लेषण ({data && data.length > 0 ? "Uploaded Sales Dataset" : "Nepali Fiscal Year Seasonality"})
+            मासिक बिक्री तथा खुद्रा नाफाको तुलनात्मक विश्लेषण {hasData ? "(अपलोड गरिएको डेटा)" : "(डाटा अपलोड आवश्यक)"}
           </p>
         </div>
 
         {/* Metric Toggles */}
-        <div className="flex items-center gap-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-xs">
-          <button
-            onClick={() => setViewMetric("both")}
-            className={`rounded-lg px-3 py-1.5 font-medium transition-colors ${
-              viewMetric === "both"
-                ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-            }`}
-          >
-            All Metrics
-          </button>
-          <button
-            onClick={() => setViewMetric("revenue")}
-            className={`rounded-lg px-3 py-1.5 font-medium transition-colors ${
-              viewMetric === "revenue"
-                ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-            }`}
-          >
-            Revenue Only
-          </button>
-          <button
-            onClick={() => setViewMetric("profit")}
-            className={`rounded-lg px-3 py-1.5 font-medium transition-colors ${
-              viewMetric === "profit"
-                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-            }`}
-          >
-            Profit Only
-          </button>
-        </div>
+        {hasData && (
+          <div className="flex items-center gap-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-xs">
+            <button
+              onClick={() => setViewMetric("both")}
+              className={`rounded-lg px-3 py-1.5 font-medium transition-colors ${
+                viewMetric === "both"
+                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+              }`}
+            >
+              All Metrics
+            </button>
+            <button
+              onClick={() => setViewMetric("revenue")}
+              className={`rounded-lg px-3 py-1.5 font-medium transition-colors ${
+                viewMetric === "revenue"
+                  ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+              }`}
+            >
+              Revenue Only
+            </button>
+            <button
+              onClick={() => setViewMetric("profit")}
+              className={`rounded-lg px-3 py-1.5 font-medium transition-colors ${
+                viewMetric === "profit"
+                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+              }`}
+            >
+              Profit Only
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className="mt-6 h-[340px] w-full">
+      {!hasData ? (
+        <div className="flex flex-col items-center justify-center h-[320px] text-center p-6 text-slate-400">
+          <div className="w-14 h-14 rounded-2xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-slate-500 mb-3">
+            <TrendingUp className="h-7 w-7 text-emerald-500/60" />
+          </div>
+          <h4 className="text-sm font-bold text-slate-200">कुनै बिक्री डाटा उपलब्ध छैन (No Sales Data)</h4>
+          <p className="text-xs text-slate-400 max-w-sm mt-1.5">
+            तपाईंको पसलको वास्तविक आम्दानी, नाफा र मासिक ट्रेन्ड हेर्न कृपया बायाँ मेनुबाट POS CSV/Excel फाइल अपलोड गर्नुहोस्।
+          </p>
+        </div>
+      ) : (
+        <div className="mt-6 h-[340px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={chartData}
@@ -194,6 +208,7 @@ export function SalesTrendChart({ data }: SalesTrendChartProps) {
           </AreaChart>
         </ResponsiveContainer>
       </div>
+      )}
     </div>
   );
 }

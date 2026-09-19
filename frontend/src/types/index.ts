@@ -59,8 +59,9 @@ export interface ETLUploadSummary {
   invalid_rows_count: number;
   invoices_created: number;
   items_recorded: number;
-  products_auto_created: number;
+  products_auto_created?: number;
   total_revenue_npr: number;
+  upload_timestamp?: string;
   errors?: ETLRowError[];
   warnings?: ETLWarning[];
   category_breakdown?: Record<string, number>;

@@ -20,9 +20,10 @@ interface Props {
 
 export function MlForecastChart({ summary }: Props) {
   const [viewMode, setViewMode] = useState<"weekly" | "saturday">("weekly");
+  const hasData = Boolean(summary && summary.total_revenue_npr && summary.total_revenue_npr > 0);
 
-  const totalRev = Number(summary?.total_revenue_npr) || 385000;
-  const weeklyBase = totalRev > 0 ? totalRev / 6 : 64000;
+  const totalRev = Number(summary?.total_revenue_npr) || 0;
+  const weeklyBase = totalRev > 0 ? totalRev / 6 : 0;
 
   // 7-Week Forward ML Projection based on Scikit-Learn Autoregressive Lags + 1.6x Saturday Surge
   const forecastData = [
@@ -171,12 +172,22 @@ export function MlForecastChart({ summary }: Props) {
         </div>
       </div>
 
-      {/* Chart Area */}
-      <div className="mt-6 h-[280px] w-full">
-        {viewMode === "weekly" ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={forecastData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.5} />
+      {!hasData ? (
+        <div className="flex flex-col items-center justify-center h-[280px] text-center p-6 text-slate-400">
+          <div className="w-14 h-14 rounded-2xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-slate-500 mb-3">
+            <BrainCircuit className="h-7 w-7 text-teal-400/60" />
+          </div>
+          <h4 className="text-sm font-bold text-slate-200">मेसिन लर्निङका लागि डाटा आवश्यक (Data Required)</h4>
+          <p className="text-xs text-slate-400 max-w-sm mt-1.5">
+            ७-हप्ते माग प्रक्षेपण र शनिबारको किनमेल चाप विश्लेषण गर्न कृपया आफ्नो पसलको POS बिक्री डाटा अपलोड गर्नुहोस्।
+          </p>
+        </div>
+      ) : (
+        <div className="mt-6 h-[280px] w-full">
+          {viewMode === "weekly" ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={forecastData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.5} />
               <XAxis
                 dataKey="week"
                 stroke="#94a3b8"
@@ -270,6 +281,7 @@ export function MlForecastChart({ summary }: Props) {
           </ResponsiveContainer>
         )}
       </div>
+      )}
 
       {/* Insight Footer */}
       <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-slate-400">

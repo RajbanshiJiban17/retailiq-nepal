@@ -101,7 +101,8 @@ interface TopProductsChartProps {
 }
 
 export function TopProductsChart({ products }: TopProductsChartProps) {
-  const chartData = products && products.length > 0 ? products : TOP_PRODUCTS_DATA;
+  const hasData = Boolean(products && products.length > 0);
+  const chartData = products || [];
 
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -115,58 +116,59 @@ export function TopProductsChart({ products }: TopProductsChartProps) {
               Top Categories & Items by Revenue
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              धेरै बिक्री भएका मुख्य सामान तथा वर्गहरू (NPR Turnover)
+              धेरै बिक्री भएका मुख्य सामान तथा वर्गहरू {hasData ? "(कारोबार अनुसार)" : "(डाटा अपलोड आवश्यक)"}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="mt-6 h-[320px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            layout="vertical"
-            data={chartData}
-            margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-            <XAxis
-              type="number"
-              tickLine={false}
-              axisLine={false}
-              tick={{ fill: "#64748b", fontSize: 11 }}
-              tickFormatter={(v) => `Rs. ${(v / 1000).toFixed(0)}k`}
-            />
-            <YAxis
-              type="category"
-              dataKey="sku"
-              tickLine={false}
-              axisLine={false}
-              width={110}
-              tick={{ fill: "#334155", fontSize: 11, fontWeight: 500 }}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="revenue" radius={[0, 6, 6, 0]}>
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Quick legend with units summary */}
-      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400">
-        {chartData.slice(0, 4).map((item, idx) => (
-          <div key={item.sku} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60">
-            <span className="truncate max-w-[140px] font-medium text-slate-800 dark:text-slate-200">
-              {idx + 1}. {item.name}
-            </span>
-            <span className="font-bold text-emerald-600 dark:text-emerald-400">
-              Rs. {(item.revenue / 1000).toFixed(1)}k
-            </span>
+      {!hasData ? (
+        <div className="flex flex-col items-center justify-center h-[300px] text-center p-6 text-slate-400">
+          <div className="w-14 h-14 rounded-2xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-slate-500 mb-3">
+            <Package className="h-7 w-7 text-amber-500/60" />
           </div>
-        ))}
-      </div>
+          <h4 className="text-sm font-bold text-slate-200">कुनै सामान बिक्री डाटा छैन (No Products Data)</h4>
+          <p className="text-xs text-slate-400 max-w-sm mt-1.5">
+            बिक्री कारोबार विवरण अपलोड गरेपछि धेरै बिकेका र नाफा दिने मुख्य उत्पादनहरू यहाँ देखिनेछन्।
+          </p>
+        </div>
+      ) : (
+        <div className="mt-6 h-[320px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              layout="vertical"
+              data={chartData}
+              margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+              <XAxis
+                type="number"
+                tickLine={false}
+                axisLine={false}
+                tick={{ fill: "#64748b", fontSize: 11 }}
+                tickFormatter={(v) => `Rs. ${(v / 1000).toFixed(0)}k`}
+              />
+              <YAxis
+                type="category"
+                dataKey="name"
+                tickLine={false}
+                axisLine={false}
+                tick={{ fill: "#64748b", fontSize: 11 }}
+                width={120}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="revenue" radius={[0, 6, 6, 0]}>
+                {chartData.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={index === 0 ? "#f59e0b" : index === 1 ? "#10b981" : "#6366f1"}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }
