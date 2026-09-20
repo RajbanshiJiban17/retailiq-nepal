@@ -81,31 +81,31 @@ export function SalesTrendChart({ data }: SalesTrendChartProps) {
   const chartData = data || [];
 
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-4 sm:p-6 shadow-xl w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
         <div>
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600">
+            <div className="p-1.5 rounded-lg bg-emerald-950/40 border border-emerald-800/60 text-emerald-400">
               <TrendingUp className="h-5 w-5" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+            <h3 className="text-base sm:text-lg font-bold text-white">
               Monthly Sales & Gross Profit Trends
             </h3>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-slate-400 mt-1">
             मासिक बिक्री तथा खुद्रा नाफाको तुलनात्मक विश्लेषण {hasData ? "(अपलोड गरिएको डेटा)" : "(डाटा अपलोड आवश्यक)"}
           </p>
         </div>
 
         {/* Metric Toggles */}
         {hasData && (
-          <div className="flex items-center gap-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 p-1 text-xs">
+          <div className="flex items-center gap-1.5 rounded-xl bg-slate-800/90 border border-slate-700/60 p-1 text-xs">
             <button
               onClick={() => setViewMetric("both")}
               className={`rounded-lg px-3 py-1.5 font-medium transition-colors ${
                 viewMetric === "both"
-                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  ? "bg-slate-900 text-white shadow-sm border border-slate-750"
+                  : "text-slate-400 hover:text-white"
               }`}
             >
               All Metrics
@@ -114,8 +114,8 @@ export function SalesTrendChart({ data }: SalesTrendChartProps) {
               onClick={() => setViewMetric("revenue")}
               className={`rounded-lg px-3 py-1.5 font-medium transition-colors ${
                 viewMetric === "revenue"
-                  ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  ? "bg-slate-900 text-emerald-400 shadow-sm border border-slate-750"
+                  : "text-slate-400 hover:text-white"
               }`}
             >
               Revenue Only
@@ -124,8 +124,8 @@ export function SalesTrendChart({ data }: SalesTrendChartProps) {
               onClick={() => setViewMetric("profit")}
               className={`rounded-lg px-3 py-1.5 font-medium transition-colors ${
                 viewMetric === "profit"
-                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  ? "bg-slate-900 text-indigo-400 shadow-sm border border-slate-750"
+                  : "text-slate-400 hover:text-white"
               }`}
             >
               Profit Only

@@ -74,24 +74,29 @@ COLUMN_ALIASES: Dict[str, List[str]] = {
 }
 
 
+CURRENCY_RE = re.compile(r"[a-zA-Z$\s]")
+SLUG_CLEAN_RE = re.compile(r"[^\w\s-]")
+SLUG_HYPHEN_RE = re.compile(r"[-\s]+")
+
+
 def _clean_currency_or_number(val: Any, default: float = 0.0) -> float:
     """
     Cleans dirty POS numeric entries such as 'Rs. 1,200.50', 'NPR 500', ' 2,400 ', or NaN.
+    High-performance path optimized for 50MB+ datasets.
     """
-    if pd.isna(val) or val is None:
+    if val is None:
         return default
     if isinstance(val, (int, float)):
-        return float(val)
+        return float(val) if not pd.isna(val) else default
 
     s = str(val).strip()
-    if not s:
+    if not s or s == "nan" or s == "None":
         return default
 
     is_negative = "-" in s
 
     # Strip currency letters (e.g. 'Rs.', 'NPR', '$') and whitespace
-    cleaned = re.sub(r"[a-zA-Z$\s]", "", s)
-    cleaned = cleaned.replace(",", "").replace("-", "").strip(". ")
+    cleaned = CURRENCY_RE.sub("", s).replace(",", "").replace("-", "").strip(". ")
     if not cleaned:
         return default
 
@@ -296,35 +301,42 @@ class POSDataCleaner:
 
         has_item_col = any(c in df.columns for c in ["product_name", "sku"])
 
-        for idx, row in df.iterrows():
-            row_num = idx + 2  # 1-indexed (account for 1 header row)
-            row_dict = row.to_dict()
+        col_idx = {col: i + 1 for i, col in enumerate(df.columns)}
+
+        def _get_val(row_tuple, col_name):
+            pos = col_idx.get(col_name)
+            if pos is None or pos >= len(row_tuple):
+                return None
+            v = row_tuple[pos]
+            return v if pd.notna(v) else None
+
+        for row in df.itertuples(name=None):
+            row_num = row[0] + 2  # 1-indexed (account for 1 header row)
 
             # 1. Validate Invoice Number
-            raw_invoice = row_dict.get("invoice_number")
-            if pd.isna(raw_invoice) or str(raw_invoice).strip() == "":
+            raw_invoice = _get_val(row, "invoice_number")
+            if raw_invoice is None or str(raw_invoice).strip() == "" or str(raw_invoice).lower() == "nan":
                 result.errors.append(
                     ETLRowError(
                         row_number=row_num,
                         invoice_number=None,
                         reason="Missing mandatory invoice/bill number.",
-                        raw_data={k: str(v) for k, v in row_dict.items() if pd.notna(v)},
                     )
                 )
                 continue
             invoice_number = str(raw_invoice).strip().upper()
 
             # 2. Validate Product Name, SKU, and Category
-            raw_name = row_dict.get("product_name")
-            raw_sku = row_dict.get("sku")
-            raw_cat = row_dict.get("category")
+            raw_name = _get_val(row, "product_name")
+            raw_sku = _get_val(row, "sku")
+            raw_cat = _get_val(row, "category")
 
-            name_empty = pd.isna(raw_name) or str(raw_name).strip() == ""
-            sku_empty = pd.isna(raw_sku) or str(raw_sku).strip() == ""
+            name_empty = raw_name is None or str(raw_name).strip() == "" or str(raw_name).lower() == "nan"
+            sku_empty = raw_sku is None or str(raw_sku).strip() == "" or str(raw_sku).lower() == "nan"
 
             if name_empty and sku_empty:
                 # If dataset genuinely lacks product/sku columns, use Category Item
-                if not has_item_col and pd.notna(raw_cat) and str(raw_cat).strip():
+                if not has_item_col and raw_cat is not None and str(raw_cat).strip() and str(raw_cat).lower() != "nan":
                     product_name = f"{str(raw_cat).strip()} Item"
                 else:
                     result.errors.append(
@@ -332,17 +344,16 @@ class POSDataCleaner:
                             row_number=row_num,
                             invoice_number=invoice_number,
                             reason="Missing both product name and SKU. Record rejected.",
-                            raw_data={k: str(v) for k, v in row_dict.items() if pd.notna(v)},
                         )
                     )
                     continue
             else:
-                product_name = str(raw_name).strip() if pd.notna(raw_name) and str(raw_name).strip() else str(raw_sku).strip()
-            
+                product_name = str(raw_name).strip() if not name_empty else str(raw_sku).strip()
+
             # If SKU is missing, auto-generate slugified SKU from product name
-            if pd.isna(raw_sku) or str(raw_sku).strip() == "":
-                clean_slug = re.sub(r"[^\w\s-]", "", product_name).strip().upper()
-                sku = re.sub(r"[-\s]+", "-", clean_slug)[:20]
+            if sku_empty:
+                clean_slug = SLUG_CLEAN_RE.sub("", product_name).strip().upper()
+                sku = SLUG_HYPHEN_RE.sub("-", clean_slug)[:20]
                 result.warnings.append(
                     ETLWarning(
                         row_number=row_num,
@@ -354,7 +365,7 @@ class POSDataCleaner:
                 sku = str(raw_sku).strip().upper()
 
             # 3. Clean Quantity
-            raw_qty = _clean_currency_or_number(row_dict.get("quantity"), default=1.0)
+            raw_qty = _clean_currency_or_number(_get_val(row, "quantity"), default=1.0)
             qty = int(round(raw_qty))
             if qty <= 0:
                 result.errors.append(
@@ -362,16 +373,15 @@ class POSDataCleaner:
                         row_number=row_num,
                         invoice_number=invoice_number,
                         reason=f"Invalid quantity: {raw_qty}. Must be greater than 0.",
-                        raw_data={k: str(v) for k, v in row_dict.items() if pd.notna(v)},
                     )
                 )
                 continue
 
             # 4. Clean Unit Price and Subtotal
-            raw_price = _clean_currency_or_number(row_dict.get("unit_price"), default=0.0)
-            raw_subtotal = _clean_currency_or_number(row_dict.get("subtotal"), default=0.0)
-            raw_disc = _clean_currency_or_number(row_dict.get("discount_amount"), default=0.0)
-            raw_tax = _clean_currency_or_number(row_dict.get("tax_amount"), default=0.0)
+            raw_price = _clean_currency_or_number(_get_val(row, "unit_price"), default=0.0)
+            raw_subtotal = _clean_currency_or_number(_get_val(row, "subtotal"), default=0.0)
+            raw_disc = _clean_currency_or_number(_get_val(row, "discount_amount"), default=0.0)
+            raw_tax = _clean_currency_or_number(_get_val(row, "tax_amount"), default=0.0)
 
             # Auto-reconcile price/subtotal
             if raw_price <= 0 and raw_subtotal > 0 and qty > 0:
@@ -392,23 +402,27 @@ class POSDataCleaner:
                         row_number=row_num,
                         invoice_number=invoice_number,
                         reason="Negative price or subtotal detected.",
-                        raw_data={k: str(v) for k, v in row_dict.items() if pd.notna(v)},
                     )
                 )
                 continue
 
             # 5. Clean Category, Payment Method, Dates & Customer Info
-            raw_category_val = str(row_dict.get("category") or "").strip()
+            raw_category_val = str(_get_val(row, "category") or "").strip()
             if not raw_category_val or raw_category_val.lower() == "general" or raw_category_val.lower() == "nan":
                 category = product_name if len(product_name) < 35 else "General"
             else:
                 category = raw_category_val
-            payment_method = _normalize_payment_method(row_dict.get("payment_method"))
-            sale_date = _parse_pos_date(row_dict.get("date"))
+            payment_method = _normalize_payment_method(_get_val(row, "payment_method"))
+            sale_date = _parse_pos_date(_get_val(row, "date"))
 
-            customer_name = str(row_dict.get("customer_name")).strip() if pd.notna(row_dict.get("customer_name")) else None
-            customer_phone = str(row_dict.get("customer_phone")).strip() if pd.notna(row_dict.get("customer_phone")) else None
-            customer_pan = str(row_dict.get("customer_pan")).strip() if pd.notna(row_dict.get("customer_pan")) else None
+            raw_cname = _get_val(row, "customer_name")
+            customer_name = str(raw_cname).strip() if raw_cname is not None and str(raw_cname).strip() != "" and str(raw_cname) != "nan" else None
+
+            raw_cphone = _get_val(row, "customer_phone")
+            customer_phone = str(raw_cphone).strip() if raw_cphone is not None and str(raw_cphone).strip() != "" and str(raw_cphone) != "nan" else None
+
+            raw_cpan = _get_val(row, "customer_pan")
+            customer_pan = str(raw_cpan).strip() if raw_cpan is not None and str(raw_cpan).strip() != "" and str(raw_cpan) != "nan" else None
 
             # Convert to Decimals for exact currency math
             try:

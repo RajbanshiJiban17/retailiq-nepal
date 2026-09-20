@@ -11,8 +11,8 @@ from app.services.etl.pos_cleaner import POSDataCleaner
 
 router = APIRouter()
 
-# Max file size: 10MB to maintain low memory footprint on free-tier hosting (512MB RAM)
-MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
+# Max file size: 100MB for high-performance retail bulk ingestion
+MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024
 
 
 @router.post(
@@ -50,7 +50,7 @@ async def upload_pos_csv(
     if len(content) > MAX_FILE_SIZE_BYTES:
         raise HTTPException(
             status_code=status.HTTP413_REQUEST_ENTITY_TOO_LARGE,
-            detail="File size exceeds maximum threshold of 10MB for free-tier processing.",
+            detail="File size exceeds maximum threshold of 100MB for POS data processing.",
         )
 
     if len(content) == 0:

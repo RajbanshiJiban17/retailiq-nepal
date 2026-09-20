@@ -118,7 +118,8 @@ class POSDataLoader:
         items_recorded = 0
         total_revenue = Decimal("0.00")
 
-        # 6. Build Sale and SaleItem records
+        # 6. Build Sale and SaleItem records with high-performance batching
+        batch_counter = 0
         for inv_num, items in invoices_map.items():
             if inv_num in existing_invoices:
                 # To prevent unique constraint collision, record warning and skip
@@ -137,7 +138,9 @@ class POSDataLoader:
             tax_total = sum((i.tax_amount for i in items), Decimal("0.00"))
             total_amt = (subtotal - discount_total + tax_total).quantize(Decimal("0.01"))
 
+            sale_id = uuid.uuid4()
             sale = Sale(
+                id=sale_id,
                 business_id=business_id,
                 invoice_number=inv_num,
                 customer_name=first_item.customer_name,
@@ -152,13 +155,12 @@ class POSDataLoader:
                 created_at=first_item.date,
             )
             session.add(sale)
-            await session.flush() # Generate sale.id
 
             for item in items:
                 prod = existing_products_map.get(item.sku)
                 sale_item = SaleItem(
                     business_id=business_id,
-                    sale_id=sale.id,
+                    sale_id=sale_id,
                     product_id=prod.id if prod else None,
                     product_name=item.product_name,
                     product_sku=item.sku,
@@ -175,6 +177,14 @@ class POSDataLoader:
 
             invoices_created += 1
             total_revenue += total_amt
+            batch_counter += 1
+
+            # Flush periodically in chunks to keep memory low and avoid per-invoice latency
+            if batch_counter % 1000 == 0:
+                await session.flush()
+
+        if batch_counter % 1000 != 0:
+            await session.flush()
 
         status = "success"
         if errors and invoices_created > 0:

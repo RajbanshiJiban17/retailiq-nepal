@@ -24,8 +24,8 @@ const STATS: StatItem[] = [
     change: "+14.2% vs last month",
     isPositive: true,
     icon: DollarSign,
-    iconBg: "bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800",
-    iconColor: "text-emerald-600 dark:text-emerald-400",
+    iconBg: "bg-emerald-950/50 border border-emerald-800/60",
+    iconColor: "text-emerald-400",
   },
   {
     id: "revenue",
@@ -35,8 +35,8 @@ const STATS: StatItem[] = [
     change: "+18.5% vs last month",
     isPositive: true,
     icon: TrendingUp,
-    iconBg: "bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800",
-    iconColor: "text-indigo-600 dark:text-indigo-400",
+    iconBg: "bg-indigo-950/50 border border-indigo-800/60",
+    iconColor: "text-indigo-400",
   },
   {
     id: "orders",
@@ -46,8 +46,8 @@ const STATS: StatItem[] = [
     change: "+8.1% vs last month",
     isPositive: true,
     icon: ShoppingCart,
-    iconBg: "bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800",
-    iconColor: "text-blue-600 dark:text-blue-400",
+    iconBg: "bg-blue-950/50 border border-blue-800/60",
+    iconColor: "text-blue-400",
   },
   {
     id: "low_stock",
@@ -57,8 +57,8 @@ const STATS: StatItem[] = [
     change: "Reorder immediately",
     isPositive: false,
     icon: AlertTriangle,
-    iconBg: "bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800",
-    iconColor: "text-amber-600 dark:text-amber-400",
+    iconBg: "bg-amber-950/50 border border-amber-800/60",
+    iconColor: "text-amber-400",
   },
 ];
 
@@ -125,8 +125,8 @@ export function StatCards({ summary }: StatCardsProps) {
           change: "डाटा अपलोड आवश्यक",
           isPositive: false,
           icon: DollarSign,
-          iconBg: "bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800",
-          iconColor: "text-emerald-600 dark:text-emerald-400",
+          iconBg: "bg-emerald-950/50 border border-emerald-800/60",
+          iconColor: "text-emerald-400",
         },
         {
           id: "revenue",
@@ -136,8 +136,8 @@ export function StatCards({ summary }: StatCardsProps) {
           change: "डाटा अपलोड आवश्यक",
           isPositive: false,
           icon: TrendingUp,
-          iconBg: "bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800",
-          iconColor: "text-indigo-600 dark:text-indigo-400",
+          iconBg: "bg-indigo-950/50 border border-indigo-800/60",
+          iconColor: "text-indigo-400",
         },
         {
           id: "orders",
@@ -147,8 +147,8 @@ export function StatCards({ summary }: StatCardsProps) {
           change: "डाटा अपलोड आवश्यक",
           isPositive: false,
           icon: ShoppingCart,
-          iconBg: "bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800",
-          iconColor: "text-blue-600 dark:text-blue-400",
+          iconBg: "bg-blue-950/50 border border-blue-800/60",
+          iconColor: "text-blue-400",
         },
         {
           id: "low_stock",
@@ -158,43 +158,43 @@ export function StatCards({ summary }: StatCardsProps) {
           change: "डाटा अपलोड आवश्यक",
           isPositive: false,
           icon: AlertTriangle,
-          iconBg: "bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800",
-          iconColor: "text-amber-600 dark:text-amber-400",
+          iconBg: "bg-amber-950/50 border border-amber-800/60",
+          iconColor: "text-amber-400",
         },
       ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 w-full">
       {statsToRender.map((stat) => {
         const Icon = stat.icon;
         return (
           <div
             key={stat.id}
-            className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+            className="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/90 p-4 sm:p-5 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:border-slate-700"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                   {stat.title}
                 </p>
                 <p className="text-xs text-slate-400 font-medium mt-0.5">
                   {stat.titleNepali}
                 </p>
               </div>
-              <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${stat.iconBg}`}>
+              <div className={`flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl ${stat.iconBg}`}>
                 <Icon className={`h-5 w-5 ${stat.iconColor}`} />
               </div>
             </div>
 
-            <div className="mt-4 flex items-baseline justify-between">
-              <h3 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+            <div className="mt-4 flex items-baseline justify-between gap-2 flex-wrap">
+              <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
                 {stat.value}
               </h3>
               <span
-                className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full ${
+                className={`inline-flex items-center text-[11px] sm:text-xs font-semibold px-2 py-0.5 rounded-full ${
                   stat.isPositive
-                    ? "text-emerald-700 bg-emerald-50 dark:text-emerald-300 dark:bg-emerald-950/50"
-                    : "text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-950/50"
+                    ? "text-emerald-300 bg-emerald-950/60 border border-emerald-800/50"
+                    : "text-amber-300 bg-amber-950/60 border border-amber-800/50"
                 }`}
               >
                 {stat.isPositive && <ArrowUpRight className="h-3 w-3 mr-0.5" />}

@@ -105,17 +105,17 @@ export function TopProductsChart({ products }: TopProductsChartProps) {
   const chartData = products || [];
 
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-4 sm:p-6 shadow-xl w-full">
+      <div className="flex items-center justify-between pb-4 border-b border-slate-800">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600">
+          <div className="p-1.5 rounded-lg bg-amber-950/40 border border-amber-800/60 text-amber-400">
             <Award className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+            <h3 className="text-base sm:text-lg font-bold text-white">
               Top Categories & Items by Revenue
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-400 mt-0.5">
               धेरै बिक्री भएका मुख्य सामान तथा वर्गहरू {hasData ? "(कारोबार अनुसार)" : "(डाटा अपलोड आवश्यक)"}
             </p>
           </div>

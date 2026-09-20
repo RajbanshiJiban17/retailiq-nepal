@@ -258,7 +258,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-emerald-500 selection:text-white flex">
+    <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-emerald-500 selection:text-white flex w-full max-w-full overflow-x-hidden">
       {/* Enterprise Left Sidebar */}
       <AppSidebar
         storeName={displayStoreName}
@@ -278,15 +278,15 @@ export default function DashboardPage() {
       />
 
       {/* Main Container Offset by Sidebar on Desktop */}
-      <div className="flex-1 flex flex-col min-w-0 transition-all duration-300">
+      <div className="flex-1 flex flex-col min-w-0 transition-all duration-300 w-full max-w-full overflow-x-hidden">
         {/* Top Navigation - Executive Store Header */}
-        <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-3 sm:gap-4">
+        <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md w-full">
+          <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-1 sm:gap-4 w-full">
+            <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
               {/* Mobile Hamburger toggle for Sidebar */}
               <button
                 onClick={() => setMobileSidebarOpen(true)}
-                className="lg:hidden p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition"
+                className="lg:hidden p-1.5 sm:p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition shrink-0"
                 aria-label="Open navigation sidebar"
               >
                 <Menu className="h-5 w-5" />
@@ -294,26 +294,26 @@ export default function DashboardPage() {
 
               <Link
                 href="/"
-                className="flex items-center gap-2 group text-white font-black text-xl tracking-tight"
+                className="flex items-center gap-1.5 sm:gap-2 group text-white font-black text-lg sm:text-xl tracking-tight shrink-0"
               >
-                <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center font-bold text-slate-950 group-hover:scale-105 transition-transform">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-500 flex items-center justify-center font-bold text-slate-950 group-hover:scale-105 transition-transform text-xs sm:text-sm">
                   IQ
                 </div>
-                <span className="hidden xs:inline">
+                <span className="hidden md:inline">
                   RetailIQ <span className="text-emerald-400 font-semibold">नेपाल</span>
                 </span>
               </Link>
 
               {/* Dynamic Store Header */}
-              <div className="flex items-center gap-2 border-l border-slate-800 pl-2.5 sm:pl-4">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
-                  <Building2 className="h-4 w-4" />
+              <div className="flex items-center gap-1.5 sm:gap-2 border-l border-slate-800 pl-1.5 sm:pl-3 min-w-0">
+                <div className="hidden xs:flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                  <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </div>
-                <div className="max-w-[110px] xs:max-w-[160px] sm:max-w-[260px] truncate">
+                <div className="min-w-0 max-w-[120px] xs:max-w-[150px] sm:max-w-[240px] truncate">
                   <span className="text-xs sm:text-sm text-white font-bold block truncate">
                     {displayStoreName}
                   </span>
-                  <span className="text-[10px] text-slate-400 block truncate">
+                  <span className="hidden sm:block text-[10px] text-slate-400 truncate">
                     Tenant: <span className="font-mono text-emerald-400">{displayTenantId}</span>
                   </span>
                 </div>
@@ -321,22 +321,22 @@ export default function DashboardPage() {
             </div>
 
             {/* Clean Executive Navbar Controls */}
-            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               {/* Registered Merchants Counter Button */}
               <button
                 onClick={() => setMerchantDirectoryOpen(true)}
-                className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-800 text-emerald-400 hover:border-emerald-500/50 hover:bg-slate-850 transition shrink-0"
+                className="inline-flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-800 text-emerald-400 hover:border-emerald-500/50 hover:bg-slate-850 transition shrink-0"
                 title="दर्ता भएका सबै पसलहरूको विवरण हेर्नुहोस् (View Merchant Directory)"
               >
-                <Store className="h-3.5 w-3.5 text-emerald-400" />
-                <span className="font-bold">{registeredMerchantCount}+</span>
+                <Store className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                <span className="font-bold text-[11px] sm:text-xs">{registeredMerchantCount}+</span>
                 <span className="hidden md:inline text-slate-300">पसलहरू</span>
               </button>
 
               {/* Stored Items CRUD Shortcut */}
               <button
                 onClick={() => setInventoryModalOpen(true)}
-                className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-200 hover:text-white hover:border-slate-700 transition"
+                className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-200 hover:text-white hover:border-slate-700 transition"
                 title="इन्भेन्टरी सम्पादन र व्यवस्थापन (CRUD)"
               >
                 <Package className="h-3.5 w-3.5 text-emerald-400" />
@@ -346,7 +346,7 @@ export default function DashboardPage() {
               {/* Active Subscription Plan Badge & Upgrade Button */}
               <button
                 onClick={() => setSubscriptionModalOpen(true)}
-                className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition border shadow-sm shrink-0 ${
+                className={`inline-flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-bold transition border shadow-sm shrink-0 ${
                   currentSubscription?.plan_id === "enterprise"
                     ? "bg-purple-950/70 border-purple-500/50 text-purple-300 hover:bg-purple-900/60"
                     : currentSubscription?.plan_id === "pro"
@@ -355,20 +355,20 @@ export default function DashboardPage() {
                 }`}
                 title="सदस्यता योजना हेर्नुहोस्"
               >
-                <Crown className="h-3.5 w-3.5 text-amber-400" />
-                <span>
+                <Crown className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                <span className="text-[11px] sm:text-xs">
                   {currentSubscription?.plan_id === "enterprise"
                     ? "इन्टरप्राइज"
                     : currentSubscription?.plan_id === "pro"
-                    ? "प्रो मर्चन्ट"
+                    ? "प्रो"
                     : "स्टार्टर"}
                 </span>
-                <span className="text-[10px] text-amber-400/90 font-normal underline ml-0.5">अपग्रेड</span>
+                <span className="hidden xs:inline text-[10px] text-amber-400/90 font-normal underline ml-0.5">अपग्रेड</span>
               </button>
 
               {/* User Profile & Logout */}
               {currentUser && (
-                <div className="flex items-center gap-1 sm:gap-2">
+                <div className="flex items-center gap-1 shrink-0">
                   <div className="hidden lg:flex items-center gap-2 pl-2 border-l border-slate-800">
                     <div className="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-bold text-xs">
                       {currentUser.full_name?.charAt(0) || "M"}
@@ -379,7 +379,7 @@ export default function DashboardPage() {
                   </div>
                   <button
                     onClick={handleLogout}
-                    className="text-xs text-slate-400 hover:text-rose-400 px-2.5 py-1.5 rounded-lg border border-slate-800 hover:border-slate-700 transition flex items-center gap-1"
+                    className="p-1.5 sm:px-2.5 sm:py-1.5 text-xs text-slate-400 hover:text-rose-400 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition flex items-center gap-1 shrink-0"
                     title="लगआउट गर्नुहोस्"
                   >
                     <LogOut className="h-3.5 w-3.5" />
