@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { UploadCloud, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2, Download, ArrowRight, Sparkles, Lock, LogIn } from "lucide-react";
-import { uploadPosCsv, API_BASE_URL } from "@/lib/api";
+import { uploadPosCsv, uploadPosSummary, API_BASE_URL } from "@/lib/api";
+import { streamParseLargeCsv } from "@/lib/clientEtl";
 import { ETLUploadSummary, UserProfile } from "@/types";
 import Link from "next/link";
 
@@ -20,6 +21,7 @@ export function PosUploadCard({
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [parseProgress, setParseProgress] = useState<{ percent: number; rows: number; revenue: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<ETLUploadSummary | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -87,9 +89,48 @@ export function PosUploadCard({
     if (!file) return;
     setUploading(true);
     setError(null);
+    setParseProgress(null);
 
     try {
-      const res: ETLUploadSummary = await uploadPosCsv(file, effectiveBusinessId);
+      let res: ETLUploadSummary;
+      const isCsv = file.name.toLowerCase().endsWith(".csv");
+
+      // For large CSV files (> 2MB) or mobile networks, stream parse on device directly
+      // This completely bypasses Cloudflare/Render 100-second upload timeouts!
+      if (isCsv && file.size > 2 * 1024 * 1024) {
+        setParseProgress({ percent: 5, rows: 0, revenue: 0 });
+        const localSummary = await streamParseLargeCsv(
+          file,
+          effectiveBusinessId,
+          (percent, rows, rev) => {
+            setParseProgress({ percent, rows, revenue: rev });
+          }
+        );
+        setParseProgress({ percent: 100, rows: localSummary.total_rows_processed, revenue: localSummary.total_revenue_npr });
+        // Sync the lightweight (~15KB) summary to backend
+        res = await uploadPosSummary(localSummary);
+      } else {
+        try {
+          res = await uploadPosCsv(file, effectiveBusinessId);
+        } catch (uploadErr: any) {
+          // If network timed out or failed and it's a CSV, automatically fall back to fast device stream parse!
+          if (isCsv) {
+            setParseProgress({ percent: 10, rows: 0, revenue: 0 });
+            const localSummary = await streamParseLargeCsv(
+              file,
+              effectiveBusinessId,
+              (percent, rows, rev) => {
+                setParseProgress({ percent, rows, revenue: rev });
+              }
+            );
+            setParseProgress({ percent: 100, rows: localSummary.total_rows_processed, revenue: localSummary.total_revenue_npr });
+            res = await uploadPosSummary(localSummary);
+          } else {
+            throw uploadErr;
+          }
+        }
+      }
+
       setSummary(res);
       // Persist latest ETL summary for dashboard consumption
       try {
@@ -105,6 +146,7 @@ export function PosUploadCard({
       setError(err.message || "CSV अपलोड तथा प्रोसेसिङ असफल भयो।");
     } finally {
       setUploading(false);
+      setParseProgress(null);
     }
   };
 
@@ -227,6 +269,29 @@ export function PosUploadCard({
               <span>{error}</span>
             </div>
           )}
+
+          {uploading && parseProgress && (
+            <div className="rounded-xl bg-emerald-950/40 border border-emerald-500/40 p-4 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-emerald-300 flex items-center gap-1.5">
+                  <Sparkles className="h-4 w-4 animate-pulse text-emerald-400" />
+                  मोबाइल / ठूलो फाइल द्रुत विश्लेषण हुँदैछ (Local Streaming Parse)...
+                </span>
+                <span className="font-mono font-bold text-emerald-400">{parseProgress.percent}%</span>
+              </div>
+              <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-300"
+                  style={{ width: `${parseProgress.percent}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <span>{parseProgress.rows.toLocaleString()} पङ्क्तिहरू विश्लेषण भयो</span>
+                <span>कुल कारोबार: Rs. {Math.round(parseProgress.revenue).toLocaleString("en-NP")}</span>
+              </div>
+            </div>
+          )}
+
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
             <span className="text-xs text-slate-400">

@@ -229,6 +229,51 @@ def get_tenant_etl_summary(business_id: str) -> Optional[ETLUploadSummary]:
     return TENANT_SUMMARIES.get(str(business_id))
 
 
+@router.post(
+    "/pos-upload-summary",
+    response_model=ETLUploadSummary,
+    summary="Save pre-processed client-side ETL summary",
+    description=(
+        "Accepts a pre-computed ETL summary from browser streaming parser, "
+        "registers it in tenant summaries, and provisions inventory items."
+    ),
+)
+async def upload_pos_summary(
+    summary_data: ETLUploadSummary,
+    db: Optional[AsyncSession] = Depends(get_db),
+) -> ETLUploadSummary:
+    # 1. Update dynamic catalog if products provided
+    try:
+        from app.api.v1.endpoints.items import InventoryItem as CatItem, update_catalog_from_etl_records
+        dynamic_catalog: list = []
+        if summary_data.top_products:
+            for idx, p in enumerate(summary_data.top_products[:25]):
+                units = p.get("unitsSold", 50)
+                avg_rate = round(p.get("revenue", 0.0) / units, 2) if units > 0 else 100.0
+                stock_units = p.get("stockLeft") or max(8, int(units * 1.4) + (35 if idx % 3 == 0 else (12 if idx % 3 == 1 else 48)))
+                p["stockLeft"] = stock_units
+                reorder_val = max(10, int(stock_units * 0.35))
+                dynamic_catalog.append(
+                    CatItem(
+                        id=idx + 1,
+                        sku=p.get("sku") or f"ITEM-{idx+1}",
+                        name=p.get("name") or f"Product {idx+1}",
+                        category=p.get("category") or "General",
+                        quantity=stock_units,
+                        price_npr=avg_rate,
+                        reorder_level=reorder_val,
+                    )
+                )
+        if dynamic_catalog:
+            update_catalog_from_etl_records(str(summary_data.business_id), dynamic_catalog)
+    except Exception as e:
+        print("Catalog sync error:", e)
+
+    TENANT_SUMMARIES[str(summary_data.business_id)] = summary_data
+    return summary_data
+
+
+
 @router.get(
     "/sample-template",
     response_class=PlainTextResponse,

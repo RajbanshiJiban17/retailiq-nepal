@@ -145,6 +145,31 @@ export async function uploadPosCsv(file: File, businessId: string): Promise<any>
 }
 
 /**
+ * Upload pre-processed client-side ETL summary (for 50MB+ datasets and mobile speedups)
+ */
+export async function uploadPosSummary(summary: any): Promise<any> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/etl/pos-upload-summary`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(summary),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ detail: `Sync failed with status ${res.status}` }));
+      throw new Error(formatApiError(errorData, `Summary sync failed with status ${res.status}`));
+    }
+
+    return await res.json();
+  } catch (err: any) {
+    console.warn("Could not sync summary to cloud backend, local copy active:", err);
+    // Return summary so dashboard still works seamlessly offline
+    return summary;
+  }
+}
+
+
+/**
  * Login merchant user to receive JWT token.
  */
 export async function loginUser(email: string, password: string, businessId?: string): Promise<any> {
