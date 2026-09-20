@@ -283,21 +283,32 @@ class POSDataLoader:
             for idx, (k, v) in enumerate(pay_totals.items())
         ]
 
+        # Prefer aggregate metrics from chunked cleaner for 50MB+ datasets
+        final_valid_count = cleaned.valid_rows_count if cleaned.valid_rows_count > 0 else len(cleaned.records)
+        final_invalid_count = cleaned.invalid_rows_count if cleaned.invalid_rows_count > 0 else len(errors)
+        final_invoices = invoices_created
+        final_revenue = round(float(cleaned.total_revenue_npr), 2) if cleaned.total_revenue_npr > 0 else round(float(total_revenue), 2)
+
+        final_cat_rev = cleaned.category_breakdown if cleaned.category_breakdown else {k: round(v, 2) for k, v in cat_rev.items()}
+        final_top_prods = cleaned.top_products if cleaned.top_products else top_prods
+        final_trend = cleaned.monthly_trend if cleaned.monthly_trend else monthly_trend
+        final_payments = cleaned.payment_breakdown if cleaned.payment_breakdown else payment_breakdown
+
         return ETLUploadSummary(
             status=status,
             business_id=business_id,
             file_name=file_name,
             total_rows_processed=cleaned.total_raw_rows,
-            valid_rows_count=len(cleaned.records),
-            invalid_rows_count=len(errors),
-            invoices_created=invoices_created,
-            items_recorded=items_recorded,
+            valid_rows_count=final_valid_count,
+            invalid_rows_count=final_invalid_count,
+            invoices_created=final_invoices,
+            items_recorded=final_valid_count,
             products_auto_created=new_products_count,
-            total_revenue_npr=round(float(total_revenue), 2),
-            errors=errors,
-            warnings=warnings,
-            category_breakdown={k: round(v, 2) for k, v in cat_rev.items()},
-            top_products=top_prods,
-            monthly_trend=monthly_trend,
-            payment_breakdown=payment_breakdown,
+            total_revenue_npr=final_revenue,
+            errors=errors[:50],
+            warnings=warnings[:50],
+            category_breakdown=final_cat_rev,
+            top_products=final_top_prods,
+            monthly_trend=final_trend,
+            payment_breakdown=final_payments,
         )

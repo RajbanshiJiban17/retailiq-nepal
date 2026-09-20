@@ -49,7 +49,7 @@ for origin in ["https://retailiq-nepal.onrender.com", "https://retailiq-nepal.ve
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_origin_regex=r"https://.*\.onrender\.com|https://.*\.vercel\.app",
+    allow_origin_regex=r"https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

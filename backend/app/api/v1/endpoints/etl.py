@@ -95,51 +95,83 @@ async def upload_pos_csv(
                     detail=f"Database Bulk Insertion Failure: {str(e)}",
                 )
 
-    # In-memory zero-DB fallback analysis: processes full CSV, validates records, auto-detects products & calculates revenue
-    total_rev = sum(float(r.subtotal) for r in cleaned_result.records)
-    unique_invoices = len(set(r.invoice_number for r in cleaned_result.records))
-    unique_products = len(set(r.sku for r in cleaned_result.records))
+    # In-memory zero-DB fallback analysis: prefer pre-aggregated metrics from chunked cleaner for 50MB+ datasets
+    total_rev = float(cleaned_result.total_revenue_npr) if cleaned_result.total_revenue_npr > 0 else sum(float(r.subtotal) for r in cleaned_result.records)
+    valid_cnt = cleaned_result.valid_rows_count if cleaned_result.valid_rows_count > 0 else len(cleaned_result.records)
+    invalid_cnt = cleaned_result.invalid_rows_count if cleaned_result.invalid_rows_count > 0 else len(cleaned_result.errors)
+    unique_invoices = cleaned_result.unique_invoices_count if cleaned_result.unique_invoices_count > 0 else len(set(r.invoice_number for r in cleaned_result.records))
+    unique_products = len(cleaned_result.top_products) if cleaned_result.top_products else len(set(r.sku for r in cleaned_result.records))
 
-    # Category and product revenue breakdown
-    cat_rev: dict = {}
-    prod_stats: dict = {}
-    months_dict: dict = {}
-    pay_totals: dict = {}
+    # Use precomputed summaries or compute fallback from sample records
+    if cleaned_result.category_breakdown:
+        cat_breakdown = cleaned_result.category_breakdown
+        top_prods = cleaned_result.top_products
+        monthly_trend = cleaned_result.monthly_trend
+        payment_breakdown = cleaned_result.payment_breakdown
+    else:
+        cat_rev: dict = {}
+        prod_stats: dict = {}
+        months_dict: dict = {}
+        pay_totals: dict = {}
 
-    for r in cleaned_result.records:
-        cat_name = r.category or "General"
-        cat_rev[cat_name] = cat_rev.get(cat_name, 0.0) + float(r.subtotal)
-        
-        prod_key = r.product_name or r.sku
-        if prod_key not in prod_stats:
-            prod_stats[prod_key] = {
-                "name": prod_key,
-                "sku": r.sku,
-                "category": r.category or "General",
-                "unitsSold": 0,
-                "revenue": 0.0,
-                "stockLeft": 35,
+        for r in cleaned_result.records:
+            cat_name = r.category or "General"
+            cat_rev[cat_name] = cat_rev.get(cat_name, 0.0) + float(r.subtotal)
+            
+            prod_key = r.product_name or r.sku
+            if prod_key not in prod_stats:
+                prod_stats[prod_key] = {
+                    "name": prod_key,
+                    "sku": r.sku,
+                    "category": r.category or "General",
+                    "unitsSold": 0,
+                    "revenue": 0.0,
+                    "stockLeft": 35,
+                }
+            prod_stats[prod_key]["unitsSold"] += r.quantity
+            prod_stats[prod_key]["revenue"] += float(r.subtotal)
+
+            m_key = r.date.strftime("%b %Y")
+            if m_key not in months_dict:
+                months_dict[m_key] = {
+                    "month": m_key,
+                    "revenue": 0.0,
+                    "profit": 0.0,
+                    "orders": 0,
+                    "_sort_key": r.date.strftime("%Y-%m"),
+                }
+            months_dict[m_key]["revenue"] += float(r.subtotal)
+            months_dict[m_key]["profit"] += float(r.subtotal) * 0.30
+            months_dict[m_key]["orders"] += 1
+
+            p_mode = r.payment_method.value if hasattr(r.payment_method, "value") else str(r.payment_method)
+            pay_totals[p_mode] = pay_totals.get(p_mode, 0.0) + float(r.subtotal)
+
+        top_prods = sorted(prod_stats.values(), key=lambda x: x["revenue"], reverse=True)
+        cat_breakdown = {k: round(v, 2) for k, v in cat_rev.items()}
+        sorted_months = sorted(months_dict.values(), key=lambda x: x["_sort_key"])
+        monthly_trend = [
+            {
+                "month": m["month"],
+                "revenue": round(m["revenue"], 2),
+                "profit": round(m["profit"], 2),
+                "orders": m["orders"],
             }
-        prod_stats[prod_key]["unitsSold"] += r.quantity
-        prod_stats[prod_key]["revenue"] += float(r.subtotal)
+            for m in sorted_months
+        ]
 
-        m_key = r.date.strftime("%b %Y")
-        if m_key not in months_dict:
-            months_dict[m_key] = {
-                "month": m_key,
-                "revenue": 0.0,
-                "profit": 0.0,
-                "orders": 0,
-                "_sort_key": r.date.strftime("%Y-%m"),
+        total_rev_sum = sum(pay_totals.values()) or 1.0
+        color_palette = ["#10b981", "#f59e0b", "#6366f1", "#3b82f6", "#ef4444"]
+        payment_breakdown = [
+            {
+                "name": k.replace("_", " ").title(),
+                "value": round(v, 2),
+                "percentage": round((v / total_rev_sum) * 100, 1),
+                "color": color_palette[idx % len(color_palette)],
+                "nepaliLabel": "नगद" if "cash" in k.lower() else "डिजिटल / QR" if "fonepay" in k.lower() else "वालेट",
             }
-        months_dict[m_key]["revenue"] += float(r.subtotal)
-        months_dict[m_key]["profit"] += float(r.subtotal) * 0.30
-        months_dict[m_key]["orders"] += 1
-
-        p_mode = r.payment_method.value if hasattr(r.payment_method, "value") else str(r.payment_method)
-        pay_totals[p_mode] = pay_totals.get(p_mode, 0.0) + float(r.subtotal)
-
-    top_prods = sorted(prod_stats.values(), key=lambda x: x["revenue"], reverse=True)
+            for idx, (k, v) in enumerate(pay_totals.items())
+        ]
 
     # Update active inventory catalog so GET /api/v1/items reflects the store's real uploaded items
     try:
@@ -148,7 +180,6 @@ async def upload_pos_csv(
         for idx, p in enumerate(top_prods[:25]):
             units = p.get("unitsSold", 50)
             avg_rate = round(p["revenue"] / units, 2) if units > 0 else 100.0
-            # Dynamic stock units: varies based on product sales volume and realistic reorder levels
             stock_units = max(8, int(units * 1.4) + (35 if idx % 3 == 0 else (12 if idx % 3 == 1 else 48)))
             p["stockLeft"] = stock_units
             reorder_val = max(10, int(stock_units * 0.35))
@@ -168,44 +199,20 @@ async def upload_pos_csv(
     except Exception as e:
         print("Catalog sync error:", e)
 
-    sorted_months = sorted(months_dict.values(), key=lambda x: x["_sort_key"])
-    monthly_trend = [
-        {
-            "month": m["month"],
-            "revenue": round(m["revenue"], 2),
-            "profit": round(m["profit"], 2),
-            "orders": m["orders"],
-        }
-        for m in sorted_months
-    ]
-
-    total_rev_sum = sum(pay_totals.values()) or 1.0
-    color_palette = ["#10b981", "#f59e0b", "#6366f1", "#3b82f6", "#ef4444"]
-    payment_breakdown = [
-        {
-            "name": k.replace("_", " ").title(),
-            "value": round(v, 2),
-            "percentage": round((v / total_rev_sum) * 100, 1),
-            "color": color_palette[idx % len(color_palette)],
-            "nepaliLabel": "नगद" if "cash" in k.lower() else "डिजिटल / QR" if "fonepay" in k.lower() else "वालेट",
-        }
-        for idx, (k, v) in enumerate(pay_totals.items())
-    ]
-
     summary_obj = ETLUploadSummary(
-        status="success" if len(cleaned_result.errors) == 0 else "partial",
+        status="success" if invalid_cnt == 0 else "partial",
         business_id=business_id,
         file_name=file.filename,
         total_rows_processed=cleaned_result.total_raw_rows,
-        valid_rows_count=len(cleaned_result.records),
-        invalid_rows_count=len(cleaned_result.errors),
+        valid_rows_count=valid_cnt,
+        invalid_rows_count=invalid_cnt,
         invoices_created=unique_invoices,
-        items_recorded=len(cleaned_result.records),
+        items_recorded=valid_cnt,
         products_auto_created=unique_products,
         total_revenue_npr=round(total_rev, 2),
-        errors=cleaned_result.errors,
-        warnings=cleaned_result.warnings,
-        category_breakdown={k: round(v, 2) for k, v in cat_rev.items()},
+        errors=cleaned_result.errors[:50],
+        warnings=cleaned_result.warnings[:50],
+        category_breakdown=cat_breakdown,
         top_products=top_prods,
         monthly_trend=monthly_trend,
         payment_breakdown=payment_breakdown,

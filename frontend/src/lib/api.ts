@@ -124,17 +124,24 @@ export async function uploadPosCsv(file: File, businessId: string): Promise<any>
   formData.append("file", file);
   formData.append("business_id", businessId);
 
-  const res = await fetch(`${API_BASE_URL}/api/v1/etl/pos-upload`, {
-    method: "POST",
-    body: formData,
-  });
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/etl/pos-upload`, {
+      method: "POST",
+      body: formData,
+    });
 
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ detail: "CSV upload failed" }));
-    throw new Error(formatApiError(errorData, `Upload failed with status ${res.status}`));
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ detail: `Upload failed with status ${res.status}` }));
+      throw new Error(formatApiError(errorData, `Upload failed with status ${res.status}`));
+    }
+
+    return await res.json();
+  } catch (err: any) {
+    if (err.name === "TypeError" && (err.message === "Failed to fetch" || err.message?.includes("fetch"))) {
+      throw new Error("सर्भरसँग सम्पर्क हुन सकेन वा इन्टरनेट सुस्त भयो। कृपया केही सेकेन्ड पर्खेर फेरि प्रयास गर्नुहोस्। (Server timeout / Network connection failed)");
+    }
+    throw err;
   }
-
-  return res.json();
 }
 
 /**
