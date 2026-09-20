@@ -66,6 +66,9 @@ services:
     buildCommand: npm install && npm run build
     staticPublishPath: out
     autoDeploy: true
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://retailiq-nepal-api.onrender.com
 
 # ============================================================================
 # 3. Managed PostgreSQL Database (Render Free Tier)
