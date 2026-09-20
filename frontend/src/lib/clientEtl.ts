@@ -124,6 +124,18 @@ function extractMonthKey(dateStr: string | undefined): { monthKey: string; sortK
 }
 
 /**
+ * Helper to read a Blob chunk as text using FileReader (100% universal across all mobile browsers)
+ */
+function readBlobAsText(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string) || "");
+    reader.onerror = () => reject(reader.error || new Error("Failed to read file chunk"));
+    reader.readAsText(blob, "utf-8");
+  });
+}
+
+/**
  * Stream-reads a File directly on mobile/browser and aggregates full retail metrics
  */
 export async function streamParseLargeCsv(
@@ -132,7 +144,8 @@ export async function streamParseLargeCsv(
   onProgress?: ParseProgressCallback
 ): Promise<ETLUploadSummary> {
   const totalFileSize = file.size;
-  let bytesRead = 0;
+  const CHUNK_SIZE = 4 * 1024 * 1024; // 4MB per chunk
+
 
   let headerIndices: Record<string, number> = {};
   let isFirstLine = true;
@@ -149,16 +162,15 @@ export async function streamParseLargeCsv(
   const monthlyData: Record<string, { month: string; revenue: number; profit: number; orders: number; sortKey: string }> = {};
   const paymentTotals: Record<string, number> = {};
 
-  // Setup streaming chunk reader
-  const reader = file.stream().getReader();
-  const decoder = new TextDecoder("utf-8");
+  let offset = 0;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  while (offset < totalFileSize) {
+    const nextOffset = Math.min(offset + CHUNK_SIZE, totalFileSize);
+    const chunkBlob = file.slice(offset, nextOffset);
+    const chunkRaw = await readBlobAsText(chunkBlob);
+    offset = nextOffset;
 
-    bytesRead += value.byteLength;
-    const chunkText = leftover + decoder.decode(value, { stream: true });
+    const chunkText = leftover + chunkRaw;
     const lines = chunkText.split(/\r?\n/);
     // Last item might be incomplete line
     leftover = lines.pop() || "";
@@ -168,6 +180,7 @@ export async function streamParseLargeCsv(
       if (!line) continue;
 
       if (isFirstLine) {
+
         // Parse Header
         const rawHeaders = parseCsvLine(line).map((h) => h.toLowerCase().replace(/[\s_-]+/g, ""));
         
@@ -280,9 +293,12 @@ export async function streamParseLargeCsv(
     }
 
     if (onProgress && totalFileSize > 0) {
-      const progressPercent = Math.min(99, Math.round((bytesRead / totalFileSize) * 100));
+      const progressPercent = Math.min(99, Math.round((offset / totalFileSize) * 100));
       onProgress(progressPercent, totalRows, totalRevenue);
     }
+
+    // Yield control to UI thread so mobile browser renders smoothly
+    await new Promise((resolve) => setTimeout(resolve, 0));
   }
 
   // Handle final leftover line if present

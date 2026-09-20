@@ -161,8 +161,8 @@ export function PosUploadCard({
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 पसलको बिक्री डाटा अपलोड (Excel .xlsx / CSV Ingestion)
-                <span className="text-[11px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-medium border border-emerald-500/30">
-                  ETL Pipeline Active
+                <span className="text-[11px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-semibold border border-emerald-500/40">
+                  ⚡ ETL v0.2.2 Fast Stream Active
                 </span>
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
