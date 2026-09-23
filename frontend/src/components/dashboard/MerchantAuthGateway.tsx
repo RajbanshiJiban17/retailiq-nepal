@@ -19,6 +19,7 @@ import {
   Layers,
   Crown,
   ShieldAlert,
+  KeyRound,
 } from "lucide-react";
 import { loginUser, registerMerchant, fetchRegisteredMerchants } from "@/lib/api";
 import { UserProfile } from "@/types";
@@ -54,22 +55,26 @@ export function MerchantAuthGateway({ onLoginSuccess }: Props) {
   const [panVat, setPanVat] = useState("");
   const [phone, setPhone] = useState("");
 
-  // Registered merchants state
-  const [merchants, setMerchants] = useState<any[]>([]);
   const [totalCount, setTotalCount] = useState(5);
 
   useEffect(() => {
-    const loadMerchants = async () => {
+    const loadMerchantsCount = async () => {
       try {
         const res = await fetchRegisteredMerchants();
-        setMerchants(res.merchants || []);
         setTotalCount(res.total_count || 5);
       } catch {
         // fallback
       }
     };
-    loadMerchants();
+    loadMerchantsCount();
   }, []);
+
+  const handleFillDemoCreds = () => {
+    setIsLogin(true);
+    setEmail("admin@retailiq.com.np");
+    setPassword("admin123");
+    setError(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,23 +141,6 @@ export function MerchantAuthGateway({ onLoginSuccess }: Props) {
     }
   };
 
-  const handleDemoLogin = (merchant: any) => {
-    const demoUser: UserProfile = {
-      id: `usr-${merchant.id.slice(0, 8)}`,
-      email: merchant.email || "admin@retailiq.com.np",
-      full_name: merchant.owner_name || "पसल सञ्चालक",
-      business_name: merchant.business_name,
-      business_id: merchant.id,
-      phone: merchant.phone || "९८४१००००००",
-      role: "owner",
-      is_active: true,
-      is_business_owner: true,
-    };
-
-    startSession(`demo-token-${merchant.id}`, demoUser, 30);
-    onLoginSuccess(demoUser);
-  };
-
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-emerald-500 selection:text-white">
       {/* Top Bar */}
@@ -172,7 +160,7 @@ export function MerchantAuthGateway({ onLoginSuccess }: Props) {
         </div>
 
         <div className="flex items-center gap-2 text-xs">
-          <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold">
             <Store className="h-3.5 w-3.5" />
             नेपालभर {totalCount}+ पसलहरू दर्ता
           </span>
@@ -180,30 +168,93 @@ export function MerchantAuthGateway({ onLoginSuccess }: Props) {
       </header>
 
       {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 flex-1 flex flex-col justify-center">
-        {/* Banner */}
-        <div className="text-center max-w-3xl mx-auto mb-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-300 text-xs font-semibold mb-4">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            नेपालका खुद्रा तथा थोक पसलेहरूका लागि निर्मित पहिलो AI प्लेटफर्म
-          </div>
-          <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight leading-snug">
-            पसलको हिसाबकिताब, स्टक र बिक्री अब{" "}
-            <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-              AI मार्फत स्वचालित
-            </span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-2.5 max-w-xl mx-auto">
-            आफ्नो पसलको खातामा लगइन गर्नुहोस् वा नयाँ पसल दर्ता गरी ७-हप्ते माग प्रक्षेपण,
-            'बजारको साथी' AI र प्रत्यक्ष इन्भेन्टरी नियन्त्रण सुरु गर्नुहोस्।
-          </p>
-        </div>
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 flex-1 flex flex-col justify-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+          
+          {/* Left Column: Platform Capabilities & Nepali Intelligence (6 Cols) */}
+          <div className="lg:col-span-6 space-y-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-300 text-xs font-semibold">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              नेपालका खुद्रा तथा थोक व्यवसायीका लागि स्मार्ट प्रणाली
+            </div>
 
-        {/* 2-Column Grid: Left (Auth Form), Right (Verified Merchant Stores Directory) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start max-w-6xl mx-auto w-full">
-          {/* Column 1: Auth Form (5 Cols) */}
-          <div className="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
-            <div className="flex border-b border-slate-800 mb-5">
+            <div>
+              <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight leading-tight">
+                पसलको हिसाबकिताब, स्टक र बिक्री अब{" "}
+                <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+                  AI मार्फत स्वचालित
+                </span>
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-400 mt-3 leading-relaxed">
+                आफ्नो पसलको खातामा सुरक्षित लगइन गर्नुहोस् वा नयाँ पसल दर्ता गरी ७-हप्ते मेसिन लर्निङ माग प्रक्षेपण,
+                'बजारको साथी' AI र प्रत्यक्ष इन्भेन्टरी नियन्त्रण सुरु गर्नुहोस्।
+              </p>
+            </div>
+
+            {/* Core Feature Pillars */}
+            <div className="space-y-3 pt-2">
+              <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800/80 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+                  <BrainCircuit className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-white">७-हप्ते ML माग पूर्वानुमान (Nepali Ridge Model)</h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    दसैँ, तिहार, लगन र सिजनल क्यालेन्डर अनुसार प्रत्येक सामानको बिक्री प्रक्षेपण।
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800/80 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-teal-500/15 border border-teal-500/30 text-teal-400 flex items-center justify-center shrink-0">
+                  <Bot className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-white">बजारको साथी AI (वास्तविक बिक्रीमा आधारित सल्लाहकार)</h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    आफ्नै सामानको बिक्री, मौज्दात र चाडपर्व मागबारे नेपालीमै सटीक सोधपुछ।
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800/80 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg bg-purple-500/15 border border-purple-500/30 text-purple-400 flex items-center justify-center shrink-0">
+                  <Layers className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-white">प्रत्यक्ष इन्भेन्टरी र रिअर्डर अलर्टहरू</h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    सामान सकिनु अगावै अलर्ट, स्वचालित रिअर्डर मात्रा गणना र बहु-पसल व्यवस्थापन।
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Demo Credentials Autofill Banner */}
+            <div className="p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <KeyRound className="h-4 w-4 text-emerald-400 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-emerald-300">परीक्षण गर्न डेमो खाता प्रयोग गर्नुहोस्</p>
+                  <p className="text-[10px] text-slate-400 font-mono">admin@retailiq.com.np • admin123</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleFillDemoCreds}
+                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg transition shrink-0 shadow"
+              >
+                डेमो भर्नुहोस्
+              </button>
+            </div>
+          </div>
+
+          {/* Right Column: Clean Authentication Box (6 Cols) */}
+          <div className="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+            {/* Ambient Background Glow */}
+            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="flex border-b border-slate-800 mb-6">
               <button
                 type="button"
                 onClick={() => {
@@ -211,7 +262,7 @@ export function MerchantAuthGateway({ onLoginSuccess }: Props) {
                   setError(null);
                   setSuccessMsg(null);
                 }}
-                className={`flex-1 pb-3 text-xs font-bold transition border-b-2 ${
+                className={`flex-1 pb-3 text-xs sm:text-sm font-bold transition border-b-2 ${
                   isLogin
                     ? "border-emerald-500 text-emerald-400"
                     : "border-transparent text-slate-400 hover:text-slate-200"
@@ -226,7 +277,7 @@ export function MerchantAuthGateway({ onLoginSuccess }: Props) {
                   setError(null);
                   setSuccessMsg(null);
                 }}
-                className={`flex-1 pb-3 text-xs font-bold transition border-b-2 ${
+                className={`flex-1 pb-3 text-xs sm:text-sm font-bold transition border-b-2 ${
                   !isLogin
                     ? "border-emerald-500 text-emerald-400"
                     : "border-transparent text-slate-400 hover:text-slate-200"
@@ -256,7 +307,7 @@ export function MerchantAuthGateway({ onLoginSuccess }: Props) {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
+            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
               {!isLogin && (
                 <>
                   <div>
@@ -361,7 +412,7 @@ export function MerchantAuthGateway({ onLoginSuccess }: Props) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold transition shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full mt-3 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold transition shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? (
                   <span>प्रक्रिया चल्दैछ...</span>
@@ -374,85 +425,9 @@ export function MerchantAuthGateway({ onLoginSuccess }: Props) {
               </button>
             </form>
 
-            <div className="mt-4 pt-4 border-t border-slate-800/80 text-[11px] text-slate-500 text-center">
-              १००% सुरक्षित मल्टी-टेनेन्ट आर्किटेक्चर • नेपाल कानुन अनुसार दर्ता
-            </div>
-          </div>
-
-          {/* Column 2: Verified Merchant Stores Directory (7 Cols) */}
-          <div className="lg:col-span-7 bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                    <Store className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm sm:text-base font-bold text-white">
-                      दर्ता भएका सक्रिय पसलहरू (Merchant Roster)
-                    </h2>
-                    <p className="text-[11px] text-slate-400">
-                      परीक्षण गर्न कुनै पनि पसल छानेर १-क्लिकमा ड्यासबोर्ड अवलोकन गर्नुहोस्
-                    </p>
-                  </div>
-                </div>
-                <span className="text-[11px] font-bold bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-500/30">
-                  {totalCount} पसलहरू
-                </span>
-              </div>
-
-              {/* Merchant Store Cards */}
-              <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
-                {merchants.map((m) => (
-                  <div
-                    key={m.id}
-                    className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 hover:border-emerald-500/50 hover:bg-slate-850/60 transition group flex items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-3 overflow-hidden">
-                      <div className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-700 text-emerald-400 flex items-center justify-center shrink-0">
-                        <Building2 className="h-4 w-4" />
-                      </div>
-                      <div className="overflow-hidden">
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs font-bold text-white truncate">
-                            {m.business_name}
-                          </p>
-                          <span className="text-[9px] bg-amber-500/15 text-amber-400 border border-amber-500/30 px-1.5 py-0.2 rounded font-medium shrink-0">
-                            {m.plan || "Pro"}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-slate-400 truncate">
-                          {m.city || "काठमाडौं"} • {m.owner_name || "पसले"}
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => handleDemoLogin(m)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-emerald-600 text-slate-200 hover:text-white text-xs font-bold rounded-lg transition shrink-0 group-hover:shadow group-hover:shadow-emerald-600/20"
-                    >
-                      <span>ड्यासबोर्ड खोल्नुहोस्</span>
-                      <ArrowRight className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Value Props Pills */}
-            <div className="grid grid-cols-3 gap-2 pt-4 mt-4 border-t border-slate-800 text-[11px] text-slate-400">
-              <div className="p-2 rounded-lg bg-slate-950/40 border border-slate-800/80 text-center">
-                <span className="text-emerald-400 font-bold block">७-हप्ते ML</span>
-                बिक्री भविष्यवाणी
-              </div>
-              <div className="p-2 rounded-lg bg-slate-950/40 border border-slate-800/80 text-center">
-                <span className="text-teal-400 font-bold block">बजारको साथी</span>
-                नेपाली AI सल्लाहकार
-              </div>
-              <div className="p-2 rounded-lg bg-slate-950/40 border border-slate-800/80 text-center">
-                <span className="text-purple-400 font-bold block">लाइभ स्टक</span>
-                CRUD डाटाबेस नियन्त्रण
-              </div>
+            <div className="mt-5 pt-4 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-center gap-1.5 text-center">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+              <span>१००% सुरक्षित मल्टी-टेनेन्ट आर्किटेक्चर • नेपाल कानुन अनुसार दर्ता</span>
             </div>
           </div>
         </div>

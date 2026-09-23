@@ -131,12 +131,14 @@ async def chat_with_bajar_sathi(
                 total_revenue_npr=tot_rev,
             )
 
+            daily_run_rate = tot_rev / 30 if tot_rev > 0 else 0.0
             lines = [
                 f"=== पसलको आधिकारिक डाटाबेस विवरण (STORE FACTS) ===",
                 f"पसलको नाम: {biz_name}",
                 f"कुल सक्रिय सामानहरू: {total_prods} प्रकार",
                 f"सकिन लागेका सामानहरू संख्या: {len(low_stocks)} वटा",
                 f"कुल बिक्री आम्दानी: रु. {tot_rev:,.2f}",
+                f"दैनिक औषत बिक्री (Daily Average Sales): रु. {daily_run_rate:,.2f}",
                 f"कुल बिक्री बिलहरू: {tot_invs} वटा",
             ]
             if catalog:

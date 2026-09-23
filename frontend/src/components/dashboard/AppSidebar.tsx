@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   Calendar,
   X,
+  Store,
 } from "lucide-react";
 import { UserProfile, CurrentSubscription } from "@/types";
 import { getNepaliDate } from "@/lib/nepaliDate";
@@ -37,6 +38,7 @@ interface Props {
   onOpenSubscription: () => void;
   onOpenBajarSathi: () => void;
   onOpenInventoryCrud?: () => void;
+  onOpenVendorManagement?: () => void;
   onOpenAuth: () => void;
   onLogout: () => void;
   isMobileOpen: boolean;
@@ -54,6 +56,7 @@ export function AppSidebar({
   onOpenSubscription,
   onOpenBajarSathi,
   onOpenInventoryCrud,
+  onOpenVendorManagement,
   onOpenAuth,
   onLogout,
   isMobileOpen,
@@ -301,6 +304,30 @@ export function AppSidebar({
                 {!collapsed && (
                   <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full">
                     Live
+                  </span>
+                )}
+              </button>
+            )}
+
+            {/* Vendor Management */}
+            {onOpenVendorManagement && (
+              <button
+                onClick={() => {
+                  onOpenVendorManagement();
+                  onMobileClose();
+                }}
+                className={`w-full flex items-center rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-300 hover:text-emerald-400 hover:bg-slate-800/60 transition group ${
+                  collapsed ? "justify-center" : "gap-3 justify-between"
+                }`}
+                title="भेन्डर तथा पसल व्यवस्थापन"
+              >
+                <div className="flex items-center gap-3">
+                  <Store className="h-4 w-4 text-emerald-400" />
+                  {!collapsed && <span>पसल व्यवस्थापन</span>}
+                </div>
+                {!collapsed && (
+                  <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full">
+                    Admin
                   </span>
                 )}
               </button>

@@ -34,11 +34,24 @@ class DeadStockService:
         """
         if isinstance(business_id, str):
             try:
-                biz_uuid = uuid.UUID(business_id)
-            except ValueError:
-                biz_uuid = business_id
-        else:
+                biz_uuid = uuid.UUID(business_id.strip())
+            except (ValueError, AttributeError):
+                biz_uuid = None
+        elif isinstance(business_id, uuid.UUID):
             biz_uuid = business_id
+        else:
+            biz_uuid = None
+
+        if biz_uuid is None:
+            return DeadStockResponse(
+                business_id=uuid.uuid4(),
+                threshold_days=days_threshold,
+                total_dead_stock_items=0,
+                total_trapped_capital_npr=Decimal("0.00"),
+                critical_dead_count=0,
+                stagnant_count=0,
+                dead_stock_items=[],
+            )
 
         now = datetime.now(timezone.utc)
 

@@ -134,34 +134,40 @@ export function CategoryBreakdownChart({ summary }: Props) {
                     />
                   ))}
                 </Pie>
-                <Legend
-                  verticalAlign="bottom"
-                  iconType="circle"
-                  wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }}
-                  formatter={(val, entry: any) => (
-                    <span className="text-slate-300 font-medium">
-                      {val} ({entry.payload.share}%)
-                    </span>
-                  )}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+                  <Legend
+                    verticalAlign="bottom"
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }}
+                    formatter={(val, entry: any) => {
+                      const shareVal = entry?.payload?.share ?? 0;
+                      return (
+                        <span className="text-slate-300 font-medium">
+                          {val} ({shareVal}%)
+                        </span>
+                      );
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+
+        {/* Top Category Badge */}
+        {hasData && (
+          <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+            <span className="flex items-center gap-1.5">
+              <Layers className="h-3.5 w-3.5 text-emerald-400" />
+              शीर्ष विधा:{" "}
+              <strong className="text-white">
+                {String(categoryData[0]?.name || "विविध").split("(")[0].trim()}
+              </strong>
+            </span>
+            <span className="text-emerald-400 font-semibold font-mono">
+              {categoryData[0]?.share ?? 0}% योगदान
+            </span>
           </div>
         )}
       </div>
-
-      {/* Top Category Badge */}
-      {hasData && (
-        <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-          <span className="flex items-center gap-1.5">
-            <Layers className="h-3.5 w-3.5 text-emerald-400" />
-            शीर्ष विधा: <strong className="text-white">{categoryData[0]?.name.split("(")[0]}</strong>
-          </span>
-          <span className="text-emerald-400 font-semibold font-mono">
-            {categoryData[0]?.share}% योगदान
-          </span>
-        </div>
-      )}
-    </div>
   );
 }

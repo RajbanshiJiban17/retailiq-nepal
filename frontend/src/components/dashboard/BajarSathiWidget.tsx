@@ -90,31 +90,58 @@ export function BajarSathiWidget({
         };
       }
 
-      // 2. Festivals & Festive Discount Strategy
-      const isFestival = [
-        "चाडपर्व", "दशैं", "दशै", "तिहार", "छठ", "नयाँ वर्ष", "तीज", "होली", "पर्व",
-        "festival", "festive", "dashain", "tihar", "chhath", "teej", "chad parva", "parba",
-        "छुट", "discount", "xut", "chhut", "offer", "कम्बो", "bundle"
-      ].some((w) => q.includes(w));
-      if (isFestival) {
+      // 2. Today's / Daily sales question ("आज कति बिक्री भयो?", "aja kati bikri bhayeu")
+      const isTodaySales = (
+        ["आज", "दैनिक", "today", "aja", "aaja", "dinko", "daily"].some((w) => q.includes(w)) &&
+        ["बिक्री", "सेल", "आम्दानी", "कारोबार", "sale", "bikri", "karobar", "kati", "katyo"].some((w) => q.includes(w))
+      ) || ["aja kati", "aaja kati", "today's sale", "today sales", "aja ko bikri", "aaja ko bikri"].some((w) => q.includes(w));
+
+      if (isTodaySales) {
+        const dailyRunRate = totalRev / 30;
+        const dailyBills = Math.max(1, Math.round(totalRows / 30));
         return {
-          reply: `🎉 नेपाली चाडपर्व (दशैं, तिहार, छठ) को लागि पसल (${storeName}) को व्यापार, अर्डर र छुट रणनीति:\n\n१. माग पूर्वानुमान (Festive Demand Surge):\n   - खाद्यान्न (बासमती चामल, घ्यू, पिठो, तोरीको तेल, मसला): सामान्य महिना भन्दा १५०% देखि २००% (२ देखि २.५ गुणा) बढी माग हुन्छ।\n   - पेय पदार्थ, जुस, ड्राइ फ्रुट्स, चकलेट तथा चिया: माग ८०% देखि १२०% ले वृद्धि हुन्छ।\n\n२. कति र कहिले सामान मगाउने (Restock Timeline):\n   - चाडपर्व सुरु हुनुभन्दा २ देखि ३ हप्ता अगावै नियमित मौज्दात भन्दा कम्तीमा ५०% देखि ७०% थप स्टक मगाउनुपर्छ। यसले गर्दा बजारमा मूल्य बढ्ने र ढुवानी जाम हुने जोखिमबाट बचिन्छ।\n\n३. छुट तथा अफर दिने तरिका (Smart Discount Strategy):\n   - कम्बो अफर (Bundle Deals): २५ केजी चामल किन्दा १ लिटर घ्यूमा १०% छुट वा मसला प्याकेट उपहार दिनुहोस् (नगद छुट भन्दा बण्डल बढी प्रभावकारी हुन्छ)।\n   - सुस्त सामान क्लियरेन्स: कम बिक्री भएका पुराना सामानहरूलाई ५-१०% फेस्टिभल डिस्काउन्टमा राखी पूँजी खाली गर्नुहोस्।`,
-          source: `RetailIQ Festive AI Strategy`,
+          reply: `📅 आजको / दैनिक बिक्री हिसाब (${storeName}):\n• दैनिक औषत बिक्री (Run-Rate): रु. ${dailyRunRate.toLocaleString("en-NP", { maximumFractionDigits: 0 })}/- (करिब ${dailyBills} वटा बिल/दिन)\n• कुल बिक्री: रु. ${totalRev.toLocaleString("en-NP")}/- (जम्मा ${totalRows.toLocaleString()} बिलहरू)\n👉 तपाईंको पसलको कारोबार विवरण अनुसार बिक्री राम्रो गतिमा छ।`,
+          source: `Dataset: ${summary.file_name}`,
         };
       }
 
-      // 3. Top-selling product (Supports Romanized: "sabai bhanda dherai kun item sale vayeu")
+      // 3. Festivals & Festive Discount Strategy (Strictly using actual imported products, NEVER generic masala)
+      const isFestival = [
+        "चाडपर्व", "दशैं", "दशै", "तिहार", "छठ", "नयाँ वर्ष", "तीज", "होली", "पर्व",
+        "festival", "festive", "dashain", "tihar", "chhath", "teej", "chad parva", "parba",
+        "छुट", "discount", "xut", "chhut", "offer", "कम्बो", "bundle", "मगाउने", "magaune"
+      ].some((w) => q.includes(w));
+      if (isFestival) {
+        const item1 = topItems[0]?.name || "मुख्य सामान";
+        const item2 = topItems[1]?.name;
+        const recText = item2 ? `'${item1}' र '${item2}'` : `'${item1}'`;
+        const bundleText = item2 ? `'${item1}' सँग '${item2}'` : `'${item1}'`;
+
+        return {
+          reply: `🎉 चाडपर्व व्यापार तथा अर्डर रणनीति (${storeName}):\n\n१. माग पूर्वानुमान (Demand Surge):\n   - तपाईंको पसलमा सर्वाधिक बिक्ने सामान ${recText} को माग चाडपर्वमा सामान्य भन्दा १५०% देखि २००% (२ गुणासम्म) वृद्धि हुन सक्छ।\n\n२. कति र कहिले सामान मगाउने (Restock Timeline):\n   - चाडपर्व सुरु हुनुभन्दा २ देखि ३ हप्ता अगावै नियमित मौज्दात भन्दा कम्तीमा ४०% देखि ६०% थप स्टक मगाउनुहोस् ताकि अभाव नहोस्।\n\n३. छुट तथा अफर दिने तरिका (Smart Discount Strategy):\n   - कम्बो अफर (Bundle Deals): ${bundleText} को कम्बो प्याक बनाई ५-१०% चाडपर्व छुट दिनुहोस्।\n   - भीड व्यवस्थापन: Fonepay QR स्ट्यान्ड काउन्टरमा अगाडि राखी खुद्रा पैसा बिहानै पर्याप्त तयारीमा राख्नुहोस्।`,
+          source: `RetailIQ Festive AI Strategy (Grounded)`,
+        };
+      }
+
+      // 4. Top-selling product (Supports "dherai kateu", "katyo", "sabai bhanda dherai kun item sale vayeu")
       const isTopSelling = [
         "सबैभन्दा धेरै", "धेरै बिक्री", "सबैभन्दा बढी", "धेरै बिक्ने", "बढी बिक्री", "धेरै सेल", "धेरै बिक्यो",
+        "धेरै कट्यो", "धेरै काट्यो", "धेरै गयो", "धेरै सकियो",
         "top seller", "best seller", "top product", "best product", "top selling", "best selling",
         "most selling", "highest selling", "top item", "best item", "highest sale",
         "sabai bhanda dherai", "sabai vanda dherai", "sabai bhanda badi", "sabai vanda badi",
         "dherai bikri", "dherai sale", "dherai bikyo", "dherai sale bhayo", "dherai sale vayeu", "dherai sale bhayeu",
+        "dherai kateu", "dherai katyo", "dherai kateko", "dherai gayo", "dherai gaeu",
         "kun item sale vayeu", "kun saman sale vayeu", "kun item dherai", "kun saman dherai",
-        "kun product dherai", "kun item bikyo", "kun saman bikyo", "kun item sale", "kun saman sale"
+        "kun product dherai", "kun item bikyo", "kun saman bikyo", "kun item sale", "kun saman sale",
+        "kun item kateu", "kun saman kateu", "kun item katyo", "kun saman katyo",
+        "kun saman athwa item dherai", "kun saman athwa item dherai kateu", "kun saman dherai kateu"
       ].some((w) => q.includes(w)) || (
         (q.includes("dherai") || q.includes("धेरै") || q.includes("top") || q.includes("best") || q.includes("most")) &&
-        (q.includes("sale") || q.includes("item") || q.includes("saman") || q.includes("bikri") || q.includes("बिक्री") || q.includes("vayeu") || q.includes("bhayo"))
+        (q.includes("sale") || q.includes("item") || q.includes("saman") || q.includes("bikri") || q.includes("बिक्री") || q.includes("vayeu") || q.includes("bhayo") || q.includes("kateu") || q.includes("katyo") || q.includes("bikyo"))
+      ) || (
+        (q.includes("kateu") || q.includes("katyo") || q.includes("कट्यो") || q.includes("काट्यो")) &&
+        (q.includes("kun") || q.includes("dherai") || q.includes("saman") || q.includes("item"))
       );
 
       if (isTopSelling && topItems.length > 0) {
@@ -191,8 +218,8 @@ export function BajarSathiWidget({
         }
       }
 
-      // 6. Breakdown query
-      const isBreakdown = ["कुन सामान", "कति बाँकी", "अरु सामान", "अरू सामान", "कुन-कुन", "सबै सामान", "कति कति", "प्रत्येक", "list", "सूची"].some((w) => q.includes(w));
+      // 6. Breakdown query / Remaining stock
+      const isBreakdown = ["कुन सामान", "कति बाँकी", "बाँकी", "बाकि", "baki xa", "kun baki", "अरु सामान", "अरू सामान", "कुन-कुन", "सबै सामान", "कति कति", "प्रत्येक", "list", "सूची"].some((w) => q.includes(w));
       if (isBreakdown && topItems.length > 0) {
         const itemsList = topItems
           .map((p, idx) => {
@@ -278,15 +305,35 @@ export function BajarSathiWidget({
       // First attempt backend dynamic RAG call with store context
       const res = await askBajarSathi(effectiveTenantId, queryText, storeName, summary);
       if (res && res.answer) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            sender: "bot",
-            text: res.answer,
-            source: res.model_used || "Bajar ko Sathi AI",
-          },
-        ]);
-        return;
+        // Anti-hallucination guard: If remote backend returns hardcoded grocery terms
+        // (खाद्यान्न, मसला, चामल वा घ्यू) when the uploaded dataset does NOT contain groceries,
+        // intercept it and fall back to local grounded response with the user's actual products.
+        const storeHasGroceries = summary?.top_products?.some((p: any) => {
+          const n = (p.name || "").toLowerCase();
+          const c = (p.category || "").toLowerCase();
+          return n.includes("मसला") || n.includes("masala") || c.includes("masala") ||
+                 n.includes("चामल") || n.includes("rice") || c.includes("grocery") ||
+                 n.includes("घ्यू") || n.includes("ghee") || c.includes("खाद्यान्न");
+        });
+
+        const isGroceryHallucination =
+          !storeHasGroceries &&
+          (res.answer.includes("मसला") ||
+           res.answer.includes("चामल वा घ्यू") ||
+           res.answer.includes("खाद्यान्न र मसला") ||
+           res.answer.includes("खाद्यान्न, चामल र तेल"));
+
+        if (!isGroceryHallucination) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: "bot",
+              text: res.answer,
+              source: res.model_used || "Bajar ko Sathi AI",
+            },
+          ]);
+          return;
+        }
       }
     } catch {
       // Fallback to client-side grounded response seamlessly

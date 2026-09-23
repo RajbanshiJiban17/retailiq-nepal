@@ -2,8 +2,16 @@ import { HealthStatus, InventoryItem, ConnectionState } from "@/types";
 
 export function getApiBaseUrl(): string {
   if (typeof window !== "undefined") {
-    if (window.location.hostname.includes("localhost") || window.location.hostname.includes("127.0.0.1")) {
-      return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8000";
+    const host = window.location.hostname;
+    if (
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host.startsWith("192.168.") ||
+      host.startsWith("10.") ||
+      host.startsWith("172.") ||
+      host.endsWith(".local")
+    ) {
+      return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || `http://${host}:8000`;
     }
   }
   return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "https://retailiq-nepal-api.onrender.com";
@@ -53,7 +61,7 @@ export async function probeBackendHealth(
     }
 
     try {
-      const res = await fetchWithTimeout(`${API_BASE_URL}/api/v1/health`, { cache: "no-store" }, 6000);
+      const res = await fetchWithTimeout(`${getApiBaseUrl()}/api/v1/health`, { cache: "no-store" }, 6000);
       if (res.ok) {
         const data: HealthStatus = await res.json();
         onProgress?.("connected", elapsed);
@@ -76,9 +84,10 @@ export async function probeBackendHealth(
  * Fetch sample or tenant inventory items from FastAPI.
  */
 export async function fetchInventoryItems(businessId?: string): Promise<InventoryItem[]> {
+  const base = getApiBaseUrl();
   const url = businessId
-    ? `${API_BASE_URL}/api/v1/items?business_id=${encodeURIComponent(businessId)}`
-    : `${API_BASE_URL}/api/v1/items`;
+    ? `${base}/api/v1/items?business_id=${encodeURIComponent(businessId)}`
+    : `${base}/api/v1/items`;
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) {
     throw new Error(`Failed to fetch inventory: ${res.statusText}`);
@@ -125,7 +134,7 @@ export async function uploadPosCsv(file: File, businessId: string): Promise<any>
   formData.append("business_id", businessId);
 
   try {
-    const res = await fetch(`${API_BASE_URL}/api/v1/etl/pos-upload`, {
+    const res = await fetch(`${getApiBaseUrl()}/api/v1/etl/pos-upload`, {
       method: "POST",
       body: formData,
     });
@@ -149,7 +158,7 @@ export async function uploadPosCsv(file: File, businessId: string): Promise<any>
  */
 export async function uploadPosSummary(summary: any): Promise<any> {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/v1/etl/pos-upload-summary`, {
+    const res = await fetch(`${getApiBaseUrl()}/api/v1/etl/pos-upload-summary`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(summary),
@@ -173,7 +182,7 @@ export async function uploadPosSummary(summary: any): Promise<any> {
  * Login merchant user to receive JWT token.
  */
 export async function loginUser(email: string, password: string, businessId?: string): Promise<any> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+  const res = await fetch(`${getApiBaseUrl()}/api/v1/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email: email.trim().toLowerCase(), password, business_id: businessId || undefined }),
@@ -198,7 +207,7 @@ export async function registerMerchant(data: {
   password: string;
   phone?: string;
 }): Promise<any> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
+  const res = await fetch(`${getApiBaseUrl()}/api/v1/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -223,7 +232,7 @@ export async function registerMerchant(data: {
  * Fetch available SaaS subscription tiers and features.
  */
 export async function fetchSubscriptionPlans(): Promise<any[]> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/subscription/plans`, { cache: "no-store" });
+  const res = await fetch(`${getApiBaseUrl()}/api/v1/subscription/plans`, { cache: "no-store" });
   if (!res.ok) {
     throw new Error("Failed to fetch subscription plans");
   }
@@ -236,7 +245,7 @@ export async function fetchSubscriptionPlans(): Promise<any[]> {
 export async function fetchCurrentSubscription(businessId: string = "00000000-0000-0000-0000-000000000001"): Promise<any> {
   const targetId = businessId || "00000000-0000-0000-0000-000000000001";
   const res = await fetch(
-    `${API_BASE_URL}/api/v1/subscription/current?business_id=${encodeURIComponent(targetId)}`,
+    `${getApiBaseUrl()}/api/v1/subscription/current?business_id=${encodeURIComponent(targetId)}`,
     { cache: "no-store" }
   );
   if (!res.ok) {
@@ -264,7 +273,7 @@ export async function upgradeSubscriptionPlan(
   billingCycle: string = "monthly",
   amountPaid?: number
 ): Promise<any> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/subscription/upgrade`, {
+  const res = await fetch(`${getApiBaseUrl()}/api/v1/subscription/upgrade`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -293,7 +302,7 @@ export async function askBajarSathi(
   businessName?: string,
   storeContext?: any
 ): Promise<any> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/bajar-ko-sathi/chat`, {
+  const res = await fetch(`${getApiBaseUrl()}/api/v1/bajar-ko-sathi/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -315,7 +324,7 @@ export async function askBajarSathi(
  */
 export async function fetchRegisteredMerchants(): Promise<{ total_count: number; merchants: any[] }> {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/v1/auth/merchants`, { cache: "no-store" });
+    const res = await fetch(`${getApiBaseUrl()}/api/v1/auth/merchants`, { cache: "no-store" });
     if (res.ok) {
       return await res.json();
     }
@@ -335,11 +344,25 @@ export async function fetchRegisteredMerchants(): Promise<{ total_count: number;
 }
 
 /**
+ * Permanently delete a registered merchant/vendor from system.
+ */
+export async function deleteRegisteredMerchant(merchantId: string): Promise<{ status: string; message: string; deleted_id: string; total_count: number }> {
+  const res = await fetch(`${getApiBaseUrl()}/api/v1/auth/merchants/${encodeURIComponent(merchantId)}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || `पसल हटाउन सकिएन (${res.status})`);
+  }
+  return await res.json();
+}
+
+/**
  * Update an existing inventory item in the database (PUT /api/v1/items/{item_id}).
  */
 export async function updateInventoryItem(itemId: number, payload: any, businessId?: string): Promise<any> {
   const query = businessId ? `?business_id=${encodeURIComponent(businessId)}` : "";
-  const res = await fetch(`${API_BASE_URL}/api/v1/items/${itemId}${query}`, {
+  const res = await fetch(`${getApiBaseUrl()}/api/v1/items/${itemId}${query}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -356,7 +379,7 @@ export async function updateInventoryItem(itemId: number, payload: any, business
  */
 export async function deleteInventoryItem(itemId: number, businessId?: string): Promise<any> {
   const query = businessId ? `?business_id=${encodeURIComponent(businessId)}` : "";
-  const res = await fetch(`${API_BASE_URL}/api/v1/items/${itemId}${query}`, {
+  const res = await fetch(`${getApiBaseUrl()}/api/v1/items/${itemId}${query}`, {
     method: "DELETE",
   });
   if (!res.ok) {
@@ -371,7 +394,7 @@ export async function deleteInventoryItem(itemId: number, businessId?: string): 
  */
 export async function createInventoryItem(payload: any, businessId?: string): Promise<any> {
   const query = businessId ? `?business_id=${encodeURIComponent(businessId)}` : "";
-  const res = await fetch(`${API_BASE_URL}/api/v1/items${query}`, {
+  const res = await fetch(`${getApiBaseUrl()}/api/v1/items${query}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

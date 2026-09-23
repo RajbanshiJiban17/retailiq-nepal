@@ -30,11 +30,24 @@ class LowStockAlertService:
         """
         if isinstance(business_id, str):
             try:
-                biz_uuid = uuid.UUID(business_id)
-            except ValueError:
-                biz_uuid = business_id
-        else:
+                biz_uuid = uuid.UUID(business_id.strip())
+            except (ValueError, AttributeError):
+                biz_uuid = None
+        elif isinstance(business_id, uuid.UUID):
             biz_uuid = business_id
+        else:
+            biz_uuid = None
+
+        if biz_uuid is None:
+            return LowStockAlertResponse(
+                business_id=uuid.uuid4(),
+                total_alerts=0,
+                out_of_stock_count=0,
+                critical_count=0,
+                warning_count=0,
+                total_replenishment_budget_npr=Decimal("0.00"),
+                alerts=[],
+            )
 
         stmt = (
             select(Product)

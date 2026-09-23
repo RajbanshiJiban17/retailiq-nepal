@@ -31,6 +31,7 @@ import json
 from pathlib import Path
 
 USERS_STORAGE_PATH = Path(__file__).resolve().parent.parent.parent / "storage" / "mock_users.json"
+MERCHANTS_STORAGE_PATH = Path(__file__).resolve().parent.parent.parent / "storage" / "merchants.json"
 
 # Local In-Memory Auth Fallback Store (for local zero-DB dev/demo)
 _MOCK_USERS_DB = {
@@ -47,6 +48,93 @@ _MOCK_USERS_DB = {
         "is_business_owner": True,
     }
 }
+
+_DEFAULT_MERCHANTS = [
+    {
+        "id": "11111111-1111-1111-1111-111111111111",
+        "business_name": "पशुपति किराना तथा सुपरस्टोर",
+        "owner_name": "रमेश अधिकारी",
+        "email": "admin@retailiq.com.np",
+        "phone": "९८४१२३४५६७",
+        "city": "काठमाडौं (गौशाला)",
+        "pan_vat": "६०१२३४५६७",
+        "plan": "व्यावसायिक (Pro)",
+        "status": "सक्रिय (Verified)",
+        "created_at": "2026-01-15T09:00:00Z",
+    },
+    {
+        "id": "22222222-2222-2222-2222-222222222222",
+        "business_name": "सगरमाथा डिपार्टमेन्टल स्टोर",
+        "owner_name": "विशाल श्रेष्ठ",
+        "email": "sagarmartha.store@gmail.com",
+        "phone": "९८५१०९८७६५",
+        "city": "ललितपुर (पाटन)",
+        "pan_vat": "६०२३४५६७८",
+        "plan": "Enterprise",
+        "status": "सक्रिय (Verified)",
+        "created_at": "2026-02-01T10:30:00Z",
+    },
+    {
+        "id": "33333333-3333-3333-3333-333333333333",
+        "business_name": "अन्नपूर्ण खाद्यान्न तथा होलसेल",
+        "owner_name": "केशव गुरुङ",
+        "email": "annapurna.pokhara@yahoo.com",
+        "phone": "९८६०११२२३३",
+        "city": "पोखरा (महेन्द्रपुल)",
+        "pan_vat": "६०३४५६७८९",
+        "plan": "व्यावसायिक (Pro)",
+        "status": "सक्रिय (Verified)",
+        "created_at": "2026-02-14T11:15:00Z",
+    },
+    {
+        "id": "44444444-4444-4444-4444-444444444444",
+        "business_name": "लुम्बिनी मार्ट एण्ड ट्रेडर्स",
+        "owner_name": "सन्तोष यादव",
+        "email": "lumbini.mart@outlook.com",
+        "phone": "९८४७००९९८८",
+        "city": "बुटवल (ट्राफिक चोक)",
+        "pan_vat": "६०४५६७८९०",
+        "plan": "व्यावसायिक (Pro)",
+        "status": "सक्रिय (Verified)",
+        "created_at": "2026-03-01T14:20:00Z",
+    },
+    {
+        "id": "55555555-5555-5555-5555-555555555555",
+        "business_name": "पूर्वाञ्चल जनरल स्टोर",
+        "owner_name": "प्रकाश राजवंशी",
+        "email": "purwanchal.store@gmail.com",
+        "phone": "९८१२३४५६७८",
+        "city": "विराटनगर (मेनरोड)",
+        "pan_vat": "६०५६७८९०१",
+        "plan": "व्यावसायिक (Pro)",
+        "status": "सक्रिय (Verified)",
+        "created_at": "2026-03-10T16:45:00Z",
+    },
+]
+
+_DYNAMIC_MERCHANTS_LIST = []
+
+
+def save_merchants_to_disk():
+    try:
+        MERCHANTS_STORAGE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(MERCHANTS_STORAGE_PATH, "w", encoding="utf-8") as f:
+            json.dump(_DYNAMIC_MERCHANTS_LIST, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print("Failed to persist merchants to disk:", e)
+
+
+def load_merchants_from_disk():
+    global _DYNAMIC_MERCHANTS_LIST
+    if MERCHANTS_STORAGE_PATH.exists():
+        try:
+            with open(MERCHANTS_STORAGE_PATH, "r", encoding="utf-8") as f:
+                _DYNAMIC_MERCHANTS_LIST = json.load(f)
+                return
+        except Exception as e:
+            print("Failed to load merchants from disk:", e)
+    _DYNAMIC_MERCHANTS_LIST = list(_DEFAULT_MERCHANTS)
+    save_merchants_to_disk()
 
 
 def save_users_to_disk():
@@ -96,8 +184,9 @@ def load_users_from_disk():
             print("Failed to load users from disk:", e)
 
 
-# Load users from disk on module import
+# Load users and merchants from disk on module import
 load_users_from_disk()
+load_merchants_from_disk()
 
 
 def set_auth_cookie(response: Response, token: str, max_age_seconds: int = 1800) -> None:
@@ -386,47 +475,26 @@ async def get_me(
     "/demo-token",
     response_model=Token,
     summary="Instant JWT token generator for testing & dashboard demos",
-    description="Generates an instant, fully signed JWT access token for the default Kathmandu Kirana merchant.",
+    description="Generates an instant valid Bearer JWT without password for demo and development sessions.",
 )
-async def generate_demo_token() -> Any:
-    demo_user_id = uuid.UUID("11111111-2222-3333-4444-555555555555")
-    demo_biz_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
-
-    demo_token = create_access_token(
-        subject=demo_user_id,
-        business_id=demo_biz_id,
-        role="admin",
-        extra_claims={"demo": True, "name": "Pashupati Demo Admin"},
+async def generate_demo_token() -> Token:
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": "demo@retailiq.com.np", "role": "retailer"},
+        expires_delta=access_token_expires,
     )
-
-    demo_user = UserPublic(
-        id=demo_user_id,
-        email="demo@pashupatikirana.com.np",
-        full_name="पशुपति अधिकारी (Pashupati Adhikari)",
-        role=UserRole.ADMIN,
-        phone="+977-9841000000",
-        is_active=True,
-        is_business_owner=True,
-        business_id=demo_biz_id,
-    )
-
-    return Token(
-        access_token=demo_token,
-        token_type="bearer",
-        expires_in_seconds=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        user=demo_user,
-    )
+    return Token(access_token=access_token, token_type="bearer")
 
 
 @router.get(
     "/merchants",
     summary="List all registered retail merchants and stores",
-    description="Returns public merchant profiles and total registered store count across Nepal.",
+    description="Returns dynamic merchant profiles and total registered store count across Nepal.",
 )
 async def list_registered_merchants(db: Any = Depends(get_db)) -> Any:
-    merchants_list = []
+    global _DYNAMIC_MERCHANTS_LIST
 
-    # 1. Try fetching from PostgreSQL database if active
+    # Sync from PostgreSQL database if active and not already present
     if db is not None:
         try:
             import asyncio
@@ -434,95 +502,103 @@ async def list_registered_merchants(db: Any = Depends(get_db)) -> Any:
             res = await asyncio.wait_for(db.execute(stmt), timeout=1.0)
             biz_rows = res.scalars().all()
             for b in biz_rows:
-                merchants_list.append({
-                    "id": str(b.id),
-                    "business_name": b.name,
-                    "city": "काठमाडौं",
-                    "plan": "व्यावसायिक (Pro)",
-                    "pan_vat": b.pan_vat_number or "६०१२३४५६७",
-                    "phone": b.phone or "९८४१२३४५६७",
-                    "status": "सक्रिय (Active)",
-                })
+                bid_str = str(b.id)
+                if not any(str(m.get("id")) == bid_str for m in _DYNAMIC_MERCHANTS_LIST):
+                    _DYNAMIC_MERCHANTS_LIST.append({
+                        "id": bid_str,
+                        "business_name": b.name,
+                        "owner_name": "पसल सञ्चालक",
+                        "city": b.city or "काठमाडौं",
+                        "plan": "व्यावसायिक (Pro)",
+                        "pan_vat": b.pan_vat_number or "६०१२३४५६७",
+                        "phone": b.phone or "९८४१२३४५६७",
+                        "status": "सक्रिय (Active)",
+                    })
+                    save_merchants_to_disk()
         except Exception:
             pass
 
-    # 2. Add in-memory registered stores
-    for email, u in _MOCK_USERS_DB.items():
-        biz_id_str = str(u.get("business_id", ""))
-        biz_name = u.get("business_name") or "काठमाडौं किराना स्टोर"
-        if not any(m["id"] == biz_id_str for m in merchants_list):
-            merchants_list.append({
-                "id": biz_id_str,
-                "business_name": biz_name,
-                "owner_name": u.get("full_name", "पसल सञ्चालक"),
-                "email": email,
-                "phone": u.get("phone", "९८४१००००००"),
-                "city": "काठमाडौं",
-                "plan": "Pro Merchant (सक्रिय)",
-                "status": "सक्रिय (Verified)",
-            })
+    return {
+        "status": "success",
+        "total_count": len(_DYNAMIC_MERCHANTS_LIST),
+        "merchants": _DYNAMIC_MERCHANTS_LIST,
+    }
 
-    # Default verified merchant roster for Nepal
-    preloaded = [
-        {
-            "id": "11111111-1111-1111-1111-111111111111",
-            "business_name": "पशुपति किराना तथा सुपरस्टोर",
-            "owner_name": "रमेश अधिकारी",
-            "email": "admin@retailiq.com.np",
-            "phone": "९८४१२३४५६७",
-            "city": "काठमाडौं (गौशाला)",
-            "plan": "Pro Merchant",
-            "status": "सक्रिय (Verified)",
-        },
-        {
-            "id": "22222222-2222-2222-2222-222222222222",
-            "business_name": "सगरमाथा डिपार्टमेन्टल स्टोर",
-            "owner_name": "विशाल श्रेष्ठ",
-            "email": "sagarmartha.store@gmail.com",
-            "phone": "९८५१०९८७६५",
-            "city": "ललितपुर (पाटन)",
-            "plan": "Enterprise",
-            "status": "सक्रिय (Verified)",
-        },
-        {
-            "id": "33333333-3333-3333-3333-333333333333",
-            "business_name": "अन्नपूर्ण खाद्यान्न तथा होलसेल",
-            "owner_name": "केशव गुरुङ",
-            "email": "annapurna.pokhara@yahoo.com",
-            "phone": "९८६०११२२३३",
-            "city": "पोखरा (महेन्द्रपुल)",
-            "plan": "Pro Merchant",
-            "status": "सक्रिय (Verified)",
-        },
-        {
-            "id": "44444444-4444-4444-4444-444444444444",
-            "business_name": "लुम्बिनी मार्ट एण्ड ट्रेडर्स",
-            "owner_name": "सन्तोष यादव",
-            "email": "lumbini.mart@outlook.com",
-            "phone": "९८४७००९९८८",
-            "city": "बुटवल (ट्राफिक चोक)",
-            "plan": "Pro Merchant",
-            "status": "सक्रिय (Verified)",
-        },
-        {
-            "id": "55555555-5555-5555-5555-555555555555",
-            "business_name": "पूर्वाञ्चल जनरल स्टोर",
-            "owner_name": "प्रकाश राजवंशी",
-            "email": "purwanchal.store@gmail.com",
-            "phone": "९८१२३४५६७८",
-            "city": "विराटनगर (मेनरोड)",
-            "plan": "Pro Merchant",
-            "status": "सक्रिय (Verified)",
-        },
+
+@router.delete(
+    "/merchants/{merchant_id}",
+    summary="Delete a registered merchant / vendor",
+    description="Deletes a registered vendor by ID permanently from database and dynamic registry.",
+)
+async def delete_registered_merchant(
+    merchant_id: str,
+    db: Any = Depends(get_db),
+) -> Any:
+    global _DYNAMIC_MERCHANTS_LIST, _MOCK_USERS_DB
+
+    clean_id = str(merchant_id or "").strip()
+    if not clean_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="पसल ID प्रविष्ट गरिएको छैन (Merchant ID is required)",
+        )
+
+    deleted_from_db = False
+
+    # 1. Try deleting from PostgreSQL database if active with safe rollback
+    if db is not None:
+        try:
+            import asyncio
+            try:
+                target_uuid = uuid.UUID(clean_id)
+            except (ValueError, AttributeError):
+                target_uuid = None
+
+            if target_uuid:
+                biz_stmt = select(Business).where(Business.id == target_uuid)
+                res = await asyncio.wait_for(db.execute(biz_stmt), timeout=2.0)
+                biz_obj = res.scalar_one_or_none()
+                if biz_obj:
+                    await db.delete(biz_obj)
+                    await db.commit()
+                    deleted_from_db = True
+        except Exception as db_exc:
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+            logger.warning("Database merchant deletion failed safely: %s", db_exc)
+
+    # 2. Delete from _DYNAMIC_MERCHANTS_LIST
+    before_len = len(_DYNAMIC_MERCHANTS_LIST)
+    _DYNAMIC_MERCHANTS_LIST = [
+        m for m in _DYNAMIC_MERCHANTS_LIST
+        if str(m.get("id", "")).strip() != clean_id and str(m.get("business_id", "")).strip() != clean_id
     ]
+    try:
+        save_merchants_to_disk()
+    except Exception as disk_err:
+        logger.warning("Failed saving dynamic merchants to disk: %s", disk_err)
 
-    for p in preloaded:
-        if not any(m["id"] == p["id"] or m["business_name"] == p["business_name"] for m in merchants_list):
-            merchants_list.append(p)
+    # 3. Clean up from _MOCK_USERS_DB if linked
+    users_to_del = [
+        email for email, u in _MOCK_USERS_DB.items()
+        if str(u.get("business_id", "")).strip() == clean_id or str(u.get("id", "")).strip() == clean_id
+    ]
+    for email in users_to_del:
+        del _MOCK_USERS_DB[email]
+    if users_to_del:
+        try:
+            save_users_to_disk()
+        except Exception:
+            pass
 
     return {
         "status": "success",
-        "total_count": len(merchants_list),
-        "merchants": merchants_list,
+        "message": f"पसल सफलतापूर्वक हटाइयो (Vendor ID '{clean_id}' deleted successfully)",
+        "deleted_id": clean_id,
+        "deleted_from_db": deleted_from_db,
+        "total_count": len(_DYNAMIC_MERCHANTS_LIST),
     }
+
 

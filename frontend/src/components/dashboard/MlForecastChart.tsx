@@ -288,7 +288,7 @@ export function MlForecastChart({ summary }: Props) {
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-teal-400 animate-ping" />
           <span>
-            सिफारिस: <strong>हप्ता ५-६</strong> मा चाडपर्वका लागि खाद्यान्न स्टक <strong>५०% थप</strong> मगाउनुहोस्।
+            सिफारिस: <strong>हप्ता ५-६</strong> मा चाडपर्वका लागि मुख्य सामानको स्टक <strong>५०% थप</strong> मगाउनुहोस्।
           </span>
         </div>
         <span className="text-[11px] text-slate-500 font-mono">

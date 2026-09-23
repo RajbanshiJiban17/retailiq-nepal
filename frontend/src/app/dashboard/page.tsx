@@ -17,7 +17,7 @@ import { AuthModal } from "@/components/AuthModal";
 import { SubscriptionModal } from "@/components/SubscriptionModal";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { MerchantAuthGateway } from "@/components/dashboard/MerchantAuthGateway";
-import { MerchantDirectoryModal } from "@/components/dashboard/MerchantDirectoryModal";
+import { AdminVendorManagementModal } from "@/components/dashboard/AdminVendorManagementModal";
 import { InventoryManagementModal } from "@/components/dashboard/InventoryManagementModal";
 import { UserProfile, ETLUploadSummary, CurrentSubscription } from "@/types";
 import { loginUser, fetchCurrentSubscription, fetchRegisteredMerchants } from "@/lib/api";
@@ -271,6 +271,7 @@ export default function DashboardPage() {
         onOpenSubscription={() => setSubscriptionModalOpen(true)}
         onOpenBajarSathi={() => setBajarSathiDrawerOpen(true)}
         onOpenInventoryCrud={() => setInventoryModalOpen(true)}
+        onOpenVendorManagement={() => setMerchantDirectoryOpen(true)}
         onOpenAuth={() => setAuthModalOpen(true)}
         onLogout={handleLogout}
         isMobileOpen={mobileSidebarOpen}
@@ -322,15 +323,15 @@ export default function DashboardPage() {
 
             {/* Clean Executive Navbar Controls */}
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-              {/* Registered Merchants Counter Button */}
+              {/* Registered Merchants / Admin Vendor Management Button */}
               <button
                 onClick={() => setMerchantDirectoryOpen(true)}
-                className="inline-flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-800 text-emerald-400 hover:border-emerald-500/50 hover:bg-slate-850 transition shrink-0"
-                title="दर्ता भएका सबै पसलहरूको विवरण हेर्नुहोस् (View Merchant Directory)"
+                className="inline-flex items-center gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-800 text-emerald-400 hover:border-emerald-500/50 hover:bg-slate-850 transition shrink-0"
+                title="प्रशासक भेन्डर तथा पसल व्यवस्थापन (View & Delete Vendors)"
               >
                 <Store className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                <span className="font-bold text-[11px] sm:text-xs">{registeredMerchantCount}+</span>
-                <span className="hidden md:inline text-slate-300">पसलहरू</span>
+                <span className="font-bold text-[11px] sm:text-xs">{registeredMerchantCount}</span>
+                <span className="hidden md:inline text-slate-300">पसल व्यवस्थापन</span>
               </button>
 
               {/* Stored Items CRUD Shortcut */}
@@ -652,11 +653,14 @@ export default function DashboardPage() {
         }}
       />
 
-      {/* Registered Merchants Directory Roster Modal */}
-      <MerchantDirectoryModal
+      {/* Admin Vendor Management Modal with Full Dynamic View & Delete */}
+      <AdminVendorManagementModal
         isOpen={merchantDirectoryOpen}
         onClose={() => setMerchantDirectoryOpen(false)}
         currentBusinessId={currentUser?.business_id}
+        onVendorDeleted={(deletedId) => {
+          setRegisteredMerchantCount((prev) => Math.max(0, prev - 1));
+        }}
         onSelectMerchant={(m) => {
           const newUser: UserProfile = {
             id: m.id || "user-" + (m.business_id || m.id),

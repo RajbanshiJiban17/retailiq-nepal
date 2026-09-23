@@ -110,6 +110,7 @@ class TenantContextRetriever:
 --- [२. बिक्री र आम्दानी विवरण (SALES & REVENUE)] ---
 कुल बिक्री बिलहरू: {total_invoices} वटा
 कुल बिक्री आम्दानी: रु. {float(total_revenue):,.2f}
+दैनिक औषत बिक्री: रु. {float(total_revenue)/30 if float(total_revenue) > 0 else 0.0:,.2f}
 
 भुक्तानी माध्यमहरू:
 {chr(10).join(payment_lines) if payment_lines else "- हालसम्म कुनै बिक्री कारोबार भएको छैन।"}

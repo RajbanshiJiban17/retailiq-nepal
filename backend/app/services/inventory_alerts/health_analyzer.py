@@ -28,11 +28,27 @@ class InventoryHealthAnalyzer:
         """
         if isinstance(business_id, str):
             try:
-                biz_uuid = uuid.UUID(business_id)
-            except ValueError:
-                biz_uuid = business_id
-        else:
+                biz_uuid = uuid.UUID(business_id.strip())
+            except (ValueError, AttributeError):
+                biz_uuid = None
+        elif isinstance(business_id, uuid.UUID):
             biz_uuid = business_id
+        else:
+            biz_uuid = None
+
+        if biz_uuid is None:
+            return InventoryHealthOverview(
+                business_id=uuid.uuid4(),
+                total_skus=0,
+                total_units_in_stock=0,
+                catalog_valuation_cost_npr=Decimal("0.00"),
+                catalog_valuation_retail_npr=Decimal("0.00"),
+                unrealized_gross_margin_npr=Decimal("0.00"),
+                dead_stock_capital_npr=Decimal("0.00"),
+                replenishment_budget_needed_npr=Decimal("0.00"),
+                health_score=100.0,
+                health_grade="A",
+            )
 
         # 1. Fetch all active products
         stmt = (

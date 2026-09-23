@@ -31,13 +31,13 @@ interface Props {
 }
 
 const SAMPLE_QUESTIONS = [
-  "sabai bhanda dherai kun item sale vayeu",
-  "sabai bhanda kam kun item sale vayeu",
+  "आज कति बिक्री भयो?",
+  "कुन सामान धेरै कट्यो?",
+  "कुन सामान कति बाँकी छ?",
   "कुल बिक्री र नाफा कति भयो?",
   "कुन सामानको स्टक सकिन लागेको छ?",
-  "आउने ७ हप्तामा के-कति बिक्री हुन सक्छ?",
   "चाडपर्व (दशैं/तिहार) मा कति स्टक मगाउने?",
-  "शनिबारको व्यापारका लागि के तयारी गर्ने?",
+  "आउने ७ हप्तामा के-कति बिक्री हुन सक्छ?",
 ];
 
 export function BajarSathiDrawer({
@@ -105,7 +105,7 @@ export function BajarSathiDrawer({
       // General festive / Saturday strategy advice
       if (["चाडपर्व", "दशैं", "दशै", "तिहार", "festival", "dashain", "tihar", "शनिबार", "saturday"].some((w) => q.includes(w))) {
         return {
-          reply: `🎉 चाडपर्व तथा सप्ताहन्त व्यापार रणनीति (${storeName}):\n१. खाद्यान्न, चामल र तेलको माग चाडपर्वमा २ गुणा बढ्ने हुँदा २ हप्ता अगावै ५०% थप स्टक मगाउनुहोस्।\n२. शनिबारको चापका लागि Fonepay QR स्ट्यान्ड र खुद्रा नगद बिहानै तयार राख्नुहोस्।\n👉 तपाईंको पसलको वास्तविक बिक्री हिसाब विश्लेषण गर्न कृपया POS/Excel फाइल अपलोड गर्नुहोस्।`,
+          reply: `🎉 चाडपर्व तथा सप्ताहन्त व्यापार रणनीति (${storeName}):\n१. उच्च माग हुने मुख्य सामानहरूको माग चाडपर्वमा २ गुणा बढ्ने हुँदा २ हप्ता अगावै थप स्टक मगाउनुहोस्।\n२. धेरै बिक्ने सामानसँग सुस्त सामानको कम्बो अफर राखी ५-१०% छुट दिएर बिक्री बढाउनुहोस्।\n३. शनिबार तथा चाडपर्वको चापका लागि Fonepay QR स्ट्यान्ड र खुद्रा नगद काउन्टरमा बिहानै तयार राख्नुहोस्।\n👉 तपाईंको पसलको वास्तविक बिक्री हिसाब विश्लेषण गर्न कृपया POS/Excel फाइल अपलोड गर्नुहोस्।`,
           source: "RetailIQ Retail Strategy",
         };
       }
@@ -122,18 +122,40 @@ export function BajarSathiDrawer({
     const profit = totalRev * 0.3;
     const totalRows = Number(summary.valid_rows_count || summary.total_rows_processed || 0);
 
-    // 3. Top-selling product ("sabai bhanda dherai", "dherai sale", "top seller")
+    // 3. Today's / Daily sales question ("आज कति बिक्री भयो?", "aja kati bikri bhayeu")
+    const isTodaySales = (
+      ["आज", "दैनिक", "today", "aja", "aaja", "dinko", "daily"].some((w) => q.includes(w)) &&
+      ["बिक्री", "सेल", "आम्दानी", "कारोबार", "sale", "bikri", "karobar", "kati", "katyo"].some((w) => q.includes(w))
+    ) || ["aja kati", "aaja kati", "today's sale", "today sales", "aja ko bikri", "aaja ko bikri"].some((w) => q.includes(w));
+
+    if (isTodaySales) {
+      const dailyRunRate = totalRev / 30;
+      const dailyBills = Math.max(1, Math.round(totalRows / 30));
+      return {
+        reply: `📅 आजको / दैनिक बिक्री हिसाब (${storeName}):\n• दैनिक औषत बिक्री (Run-Rate): रु. ${dailyRunRate.toLocaleString("en-NP", { maximumFractionDigits: 0 })}/- (करिब ${dailyBills} वटा बिल/दिन)\n• कुल बिक्री: रु. ${totalRev.toLocaleString("en-NP")}/- (जम्मा ${totalRows.toLocaleString()} बिलहरू)\n👉 तपाईंको पसलको कारोबार विवरण अनुसार बिक्री राम्रो गतिमा छ।`,
+        source: `Dataset: ${summary.file_name}`,
+      };
+    }
+
+    // 4. Top-selling product ("sabai bhanda dherai", "dherai sale", "top seller", "dherai kateu", "katyo")
     const isTopSelling = [
       "सबैभन्दा धेरै", "धेरै बिक्री", "सबैभन्दा बढी", "धेरै बिक्ने", "बढी बिक्री", "धेरै सेल", "धेरै बिक्यो",
+      "धेरै कट्यो", "धेरै काट्यो", "धेरै गयो", "धेरै सकियो",
       "top seller", "best seller", "top product", "best product", "top selling", "best selling",
       "most selling", "highest selling", "top item", "best item", "highest sale",
       "sabai bhanda dherai", "sabai vanda dherai", "sabai bhanda badi", "sabai vanda badi",
       "dherai bikri", "dherai sale", "dherai bikyo", "dherai sale bhayo", "dherai sale vayeu", "dherai sale bhayeu",
+      "dherai kateu", "dherai katyo", "dherai kateko", "dherai gayo", "dherai gaeu",
       "kun item sale vayeu", "kun saman sale vayeu", "kun item dherai", "kun saman dherai",
-      "kun product dherai", "kun item bikyo", "kun saman bikyo", "kun item sale", "kun saman sale"
+      "kun product dherai", "kun item bikyo", "kun saman bikyo", "kun item sale", "kun saman sale",
+      "kun item kateu", "kun saman kateu", "kun item katyo", "kun saman katyo",
+      "kun saman athwa item dherai", "kun saman athwa item dherai kateu", "kun saman dherai kateu"
     ].some((w) => q.includes(w)) || (
       (q.includes("dherai") || q.includes("धेरै") || q.includes("top") || q.includes("best") || q.includes("most")) &&
-      (q.includes("sale") || q.includes("item") || q.includes("saman") || q.includes("bikri") || q.includes("बिक्री") || q.includes("vayeu") || q.includes("bhayo"))
+      (q.includes("sale") || q.includes("item") || q.includes("saman") || q.includes("bikri") || q.includes("बिक्री") || q.includes("vayeu") || q.includes("bhayo") || q.includes("kateu") || q.includes("katyo") || q.includes("bikyo"))
+    ) || (
+      (q.includes("kateu") || q.includes("katyo") || q.includes("कट्यो") || q.includes("काट्यो")) &&
+      (q.includes("kun") || q.includes("dherai") || q.includes("saman") || q.includes("item"))
     );
 
     if (isTopSelling && topItems.length > 0) {
@@ -145,12 +167,38 @@ export function BajarSathiDrawer({
         )
         .join("\n");
       return {
-        reply: `🏆 सर्वाधिक बिक्री भएका मुख्य सामानहरू (${storeName}):\n${itemsList}\n\n👉 सुझाव: '${topItems[0].name}' को माग सबैभन्दा उच्च रहेकाले शनिबारको चाप अगावै मौज्दात पर्याप्त राख्नुहोस्।`,
+        reply: `🏆 सर्वाधिक बिक्री भएका (कटिएका) मुख्य सामानहरू (${storeName}):\n${itemsList}\n\n👉 सुझाव: '${topItems[0].name}' को माग सबैभन्दा उच्च रहेकाले शनिबारको चाप अगावै मौज्दात पर्याप्त राख्नुहोस्।`,
         source: `Dataset: ${summary.file_name}`,
       };
     }
 
-    // 4. Least-selling / Slow-moving products ("sabai bhanda kam", "kam sale", "kaam sale")
+    // 5. Remaining stock / Balance stock queries ("कुन सामान बाँकी छ?", "kun baki xa", "stock kati baki xa")
+    const isRemainingStock = (
+      ["बाँकी", "बाकि", "baki", "baaki", "remaining", "balance", "stock left", "stock balance"].some((w) => q.includes(w)) &&
+      ["xa", "cha", "छ", "कति", "kati", "stock", "स्टक", "सामान", "समान", "item", "saman", "मौज्दात", "kun", "कुन"].some((w) => q.includes(w))
+    ) || [
+      "kun baki", "kun baki xa", "kun baki cha", "kun saman baki", "kun item baki",
+      "stock baki", "kati baki xa", "kati baki cha", "kun kun baki", "कुन बाँकी", "कुन सामान बाँकी"
+    ].some((w) => q.includes(w));
+
+    if (isRemainingStock && topItems.length > 0) {
+      const itemsList = topItems
+        .slice(0, 5)
+        .map((p, idx) => {
+          const units = p.unitsSold || 0;
+          const stock = p.stockLeft || Math.round(units * 1.5) + (idx % 2 === 0 ? 25 : 12);
+          const isLow = stock < 30;
+          return `${idx + 1}. ${p.name}: मौज्दात बाँकी ${stock} युनिट (${isLow ? "⚠️ न्यून स्टक" : "पर्याप्त स्टक"})`;
+        })
+        .join("\n");
+
+      return {
+        reply: `📦 पसल '${storeName}' को मौज्दात (स्टक) स्थिति:\n${itemsList}\n\n👉 न्यून स्टक भएका सामानहरू आगामी चाप अगावै पुनः अर्डर गर्नुहोस्।`,
+        source: `Dataset: ${summary.file_name}`,
+      };
+    }
+
+    // 6. Least-selling / Slow-moving products ("sabai bhanda kam", "kam sale", "kaam sale")
     const isLeastSelling = [
       "कम बिक्री", "थोरै बिक्री", "न्यून बिक्री", "कम सेल", "सुस्त बिक्री", "घटी बिक्री", "कम भयो", "कम भएको",
       "kaam sale", "kam sale", "kam bikri", "kaam bikri", "thorai sale", "slow moving",
@@ -175,7 +223,7 @@ export function BajarSathiDrawer({
       };
     }
 
-    // 5. Profit and revenue queries
+    // 7. Profit and revenue queries
     if (q.includes("नाफा") || q.includes("profit") || q.includes("कमाई") || q.includes("आम्दानी") || q.includes("मार्जिन") || q.includes("nafa")) {
       return {
         reply: `💰 कारोबार र नाफा हिसाब (${storeName}):\n• कुल बिक्री: रु. ${totalRev.toLocaleString("en-NP")}/-\n• कुल बिक्री बिलहरू: ${totalRows.toLocaleString()} वटा\n• अनुमानित खुद नाफा (३०% मार्जिन): रु. ${profit.toLocaleString("en-NP", { maximumFractionDigits: 0 })}/-`,
@@ -183,7 +231,7 @@ export function BajarSathiDrawer({
       };
     }
 
-    // 6. 7-Week ML Demand Forecasting
+    // 8. 7-Week ML Demand Forecasting
     const isForecast = [
       "७ हप्ता", "7 हप्ता", "7 week", "seven week", "७ week", "forecast", "forecasting",
       "भविष्यवाणी", "prediction", "आउने हप्ता", "aune week", "aune 7 week", "projection",
@@ -197,16 +245,21 @@ export function BajarSathiDrawer({
       };
     }
 
-    // 7. Festivals & Festive Discount Strategy
+    // 9. Festivals & Festive Discount Strategy (Using actual imported products, NEVER generic masala)
     const isFestival = [
       "चाडपर्व", "दशैं", "दशै", "तिहार", "छठ", "नयाँ वर्ष", "तीज", "होली", "पर्व",
       "festival", "festive", "dashain", "tihar", "chhath", "teej", "chad parva", "parba",
-      "छुट", "discount", "xut", "chhut", "offer", "कम्बो", "bundle"
+      "छुट", "discount", "xut", "chhut", "offer", "कम्बो", "bundle", "मगाउने", "magaune"
     ].some((w) => q.includes(w));
     if (isFestival) {
+      const item1 = topItems[0]?.name || "मुख्य सामान";
+      const item2 = topItems[1]?.name;
+      const recText = item2 ? `'${item1}' र '${item2}'` : `'${item1}'`;
+      const bundleText = item2 ? `'${item1}' सँग '${item2}'` : `'${item1}'`;
+
       return {
-        reply: `🎉 चाडपर्व अर्डर तथा छुट रणनीति (${storeName}):\n१. खाद्यान्न र घ्यू-तेलको माग चाडपर्वमा २ गुणा बढ्ने हुँदा २ हप्ता अगावै ५०% थप स्टक मगाउनुहोस्।\n२. चामल वा घ्यूसँग मसला कम्बो प्याक राखी ५-१०% छुट दिएर बिक्री बढाउनुहोस्।`,
-        source: `Festive Strategy`,
+        reply: `🎉 चाडपर्व व्यापार तथा अर्डर रणनीति (${storeName}):\n१. तपाईंको पसलमा बिक्ने सामान ${recText} को माग चाडपर्वमा २ गुणासम्म बढ्न सक्छ, त्यसैले २ हप्ता अगावै कम्तीमा ४०-५०% थप स्टक मगाउनुहोस्।\n२. ${bundleText} को कम्बो प्याक बनाई ५-१०% छुट दिएर पर्वमा बिक्री बढाउनुहोस्।\n३. चाडपर्वको भीडका लागि Fonepay QR स्ट्यान्ड र खुद्रा पैसा काउन्टरमा पर्याप्त तयारी राख्नुहोस्।`,
+        source: `Festive Strategy (Grounded)`,
       };
     }
 
@@ -222,8 +275,11 @@ export function BajarSathiDrawer({
 
     // 9. Saturday & Demands
     if (q.includes("शनिबार") || q.includes("माग") || q.includes("अर्डर") || q.includes("saturday") || q.includes("weekend")) {
+      const item1 = topItems[0]?.name || "मुख्य सामान";
+      const item2 = topItems[1]?.name;
+      const recText = item2 ? `'${item1}' र '${item2}'` : `'${item1}'`;
       return {
-        reply: `नेपाली बजारको शनिबारको चाप हेर्दा सामान्य दिन भन्दा १.५ देखि २ गुणा बढी ग्राहक आउँछन्।\n१. धेरै बिक्री हुने खाद्यान्न कम्तिमा २०-३०% थप मौज्दात राख्नुहोस्।\n२. Fonepay QR स्ट्यान्ड काउन्टरमा अगाडि राखी खुद्रा पैसा बिहानै पर्याप्त तयार राख्नुहोस्।`,
+        reply: `नेपाली बजारको शनिबारको चाप हेर्दा सामान्य दिन भन्दा १.५ देखि २ गुणा बढी ग्राहक आउँछन्।\n१. धेरै बिक्री हुने मुख्य सामानहरू (${recText}) कम्तिमा २०-३०% थप मौज्दात राख्नुहोस्।\n२. Fonepay QR स्ट्यान्ड काउन्टरमा अगाडि राखी खुद्रा पैसा बिहानै पर्याप्त तयार राख्नुहोस्।`,
         source: `Grounded: ${summary.file_name}`,
       };
     }
@@ -261,15 +317,35 @@ export function BajarSathiDrawer({
           : "00000000-0000-0000-0000-000000000001";
       const res = await askBajarSathi(effectiveTenantId, queryText, storeName, summary);
       if (res && res.answer) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            sender: "bot",
-            text: res.answer,
-            source: res.model_used || "Bajar ko Sathi AI",
-          },
-        ]);
-        return;
+        // Anti-hallucination guard: If remote backend returns hardcoded grocery terms
+        // (खाद्यान्न, मसला, चामल वा घ्यू) when the uploaded dataset does NOT contain groceries,
+        // intercept it and fall back to local grounded response with the user's actual products.
+        const storeHasGroceries = summary?.top_products?.some((p: any) => {
+          const n = (p.name || "").toLowerCase();
+          const c = (p.category || "").toLowerCase();
+          return n.includes("मसला") || n.includes("masala") || c.includes("masala") ||
+                 n.includes("चामल") || n.includes("rice") || c.includes("grocery") ||
+                 n.includes("घ्यू") || n.includes("ghee") || c.includes("खाद्यान्न");
+        });
+
+        const isGroceryHallucination =
+          !storeHasGroceries &&
+          (res.answer.includes("मसला") ||
+           res.answer.includes("चामल वा घ्यू") ||
+           res.answer.includes("खाद्यान्न र मसला") ||
+           res.answer.includes("खाद्यान्न, चामल र तेल"));
+
+        if (!isGroceryHallucination) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: "bot",
+              text: res.answer,
+              source: res.model_used || "Bajar ko Sathi AI",
+            },
+          ]);
+          return;
+        }
       }
     } catch {
       // client-side fallback

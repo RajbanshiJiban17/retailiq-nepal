@@ -202,6 +202,59 @@ async def run_bajar_sathi_validation():
     assert "500" in ans_sales or "रु." in ans_sales
     print("  [PASS] Sales inquiry reconciled with database facts in Nepali.")
 
+    # 6. Test "aja kati bikri bhayeu" (Today's / Daily sales)
+    print("\n6. Testing 'aja kati bikri bhayeu' (Today's Sales):")
+    today_query = "aja kati bikri bhayeu"
+    ans_today, _, _, _ = await BajarKoSathiAssistant.generate_response(
+        query=today_query,
+        context_text=context_text,
+        facts=facts,
+    )
+    print(f"  Query: '{today_query}'")
+    print(f"  Assistant Response:\n{ans_today}\n")
+    assert "दैनिक" in ans_today or "आजको" in ans_today or "बिक्री" in ans_today
+    print("  [PASS] Today's sales query accurately resolved.")
+
+    # 7. Test "kun saman athwa item dherai kateu" (Top Movers / Items Cut)
+    print("\n7. Testing 'kun saman athwa item dherai kateu' (Top sold item):")
+    top_query = "kun saman athwa item dherai kateu"
+    ans_top, _, _, _ = await BajarKoSathiAssistant.generate_response(
+        query=top_query,
+        context_text=context_text,
+        facts=facts,
+    )
+    print(f"  Query: '{top_query}'")
+    print(f"  Assistant Response:\n{ans_top}\n")
+    assert "सर्वाधिक बिक्री" in ans_top or "Wai Wai" in ans_top or "मुख्य सामान" in ans_top
+    print("  [PASS] Top item sold / cut accurately resolved.")
+
+    # 8. Test "kun baki xa" (Remaining stock)
+    print("\n8. Testing 'kun baki xa' (Stock balance):")
+    baki_query = "kun baki xa"
+    ans_baki, _, _, _ = await BajarKoSathiAssistant.generate_response(
+        query=baki_query,
+        context_text=context_text,
+        facts=facts,
+    )
+    print(f"  Query: '{baki_query}'")
+    print(f"  Assistant Response:\n{ans_baki}\n")
+    assert "मौज्दात" in ans_baki or "स्टक" in ans_baki
+    print("  [PASS] Remaining stock query accurately resolved.")
+
+    # 9. Test Festival recommendation (NO generic 'मसला' hallucination)
+    print("\n9. Testing Festival restock query (Grounding on real items, no generic masala):")
+    fest_query = "festivals ma magaune parnai vayeu bhane k garne?"
+    ans_fest, _, _, _ = await BajarKoSathiAssistant.generate_response(
+        query=fest_query,
+        context_text=context_text,
+        facts=facts,
+    )
+    print(f"  Query: '{fest_query}'")
+    print(f"  Assistant Response:\n{ans_fest}\n")
+    assert "मसला" not in ans_fest, "Hallucination detected: 'मसला' should not appear when store has no masala!"
+    assert "चाडपर्व" in ans_fest or "स्टक" in ans_fest
+    print("  [PASS] Festival recommendation grounded on actual store items without generic masala hallucination.")
+
     sync_session.close()
 
     print("=" * 60)
