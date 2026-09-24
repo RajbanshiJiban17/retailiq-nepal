@@ -75,14 +75,29 @@ class InventoryRiskSummary(BaseModel):
     estimated_restock_needed_npr: Decimal
 
 
+class TwoWeekGrowthSummary(BaseModel):
+    current_week_revenue_npr: Decimal
+    prior_week_revenue_npr: Decimal
+    revenue_growth_pct: float
+    current_week_invoices: int
+    prior_week_invoices: int
+    invoice_growth_pct: float
+    current_week_profit_npr: Decimal
+    prior_week_profit_npr: Decimal
+    profit_growth_pct: float
+    growth_status: str  # e.g., "वृद्धि (Growth)", "सुस्त (Decline)", "स्थिर (Stable)"
+
+
 class WeeklyReportData(BaseModel):
     report_id: str
     business_id: str
     generated_at: datetime
     nepali_date: str
     week_label: str
+    fiscal_year: str = "आ.व. २०८१/८२"
     store: StoreProfile
     finance: FinancialSummary
+    two_week_growth: Optional[TwoWeekGrowthSummary] = None
     top_products: List[TopProductItem]
     payments: List[PaymentChannelBreakdown]
     inventory: InventoryRiskSummary

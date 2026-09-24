@@ -129,7 +129,8 @@ async def download_demo_pdf():
     now = datetime.now(timezone.utc)
     start = now - timedelta(days=7)
 
-    from app.utils.nepali_date import get_current_nepali_date_str
+    from app.utils.nepali_date import get_current_nepali_date_str, get_fiscal_year_bs
+    from app.schemas.report import TwoWeekGrowthSummary
 
     demo_data = WeeklyReportData(
         report_id=f"DEMO-{now.strftime('%Y%m%d')}-001",
@@ -137,6 +138,7 @@ async def download_demo_pdf():
         generated_at=now,
         nepali_date=get_current_nepali_date_str(now),
         week_label=f"{start.strftime('%Y-%m-%d')} देखि {now.strftime('%Y-%m-%d')}",
+        fiscal_year=get_fiscal_year_bs(now),
         store=StoreProfile(
             name="पशुपति किराना तथा जनरल स्टोर (Pashupati Kirana)",
             pan_vat_number="301234567",
@@ -151,6 +153,18 @@ async def download_demo_pdf():
             profit_margin_pct=22.0,
             total_invoices=482,
             average_order_value_npr=Decimal("515.56"),
+        ),
+        two_week_growth=TwoWeekGrowthSummary(
+            current_week_revenue_npr=Decimal("248500.00"),
+            prior_week_revenue_npr=Decimal("218200.00"),
+            revenue_growth_pct=13.9,
+            current_week_invoices=482,
+            prior_week_invoices=425,
+            invoice_growth_pct=13.4,
+            current_week_profit_npr=Decimal("54670.00"),
+            prior_week_profit_npr=Decimal("48000.00"),
+            profit_growth_pct=13.9,
+            growth_status="उच्च वृद्धि (High Growth 🚀)",
         ),
         top_products=[
             TopProductItem(sku="SKU-NDL-001", name="Wai Wai Chicken Noodles 75g", category="Instant Noodles", quantity_sold=620, revenue_npr=Decimal("15500.00"), profit_npr=Decimal("3100.00")),

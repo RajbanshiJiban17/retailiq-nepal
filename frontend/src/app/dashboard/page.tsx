@@ -542,7 +542,7 @@ export default function DashboardPage() {
           {/* Section 2: Sales Trend Area Chart + Category Breakdown Donut Chart */}
           <div id="category-analytics" className="grid grid-cols-1 lg:grid-cols-3 gap-6 scroll-mt-20">
             <div className="lg:col-span-2">
-              <SalesTrendChart data={etlSummary?.monthly_trend} />
+              <SalesTrendChart data={etlSummary?.monthly_trend} summary={etlSummary} />
             </div>
             <div className="lg:col-span-1">
               <CategoryBreakdownChart summary={etlSummary} />

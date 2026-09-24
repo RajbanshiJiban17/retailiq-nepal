@@ -52,7 +52,22 @@ export function BajarSathiWidget({
   const generateGroundedResponse = (query: string): { reply: string; source: string } => {
     const q = query.toLowerCase().trim();
 
-    // 1. Natural greetings
+    // 1. Gratitude & Closing Greetings (Thank you, धन्यवाद, Bye, आजलाई यति)
+    const thankYouWords = [
+      "thank you", "thank", "thanks", "dhanyabad", "dhanybaad", "धन्यवाद",
+      "dherai dherai dhanyabad", "dherai dhanyabad", "thx", "thank u",
+      "bye", "goodbye", "bida", "ramro lagyo", "aaja lai yeti", "aja lai yeti",
+      "yeti nai", "huss dhanyabad", "hus dhanyabad", "ok thanks", "okay thanks",
+      "welcome", "always", "see you", "good night", "शुभ रात्रि"
+    ];
+    if (thankYouWords.some((w) => q === w || q.includes(w))) {
+      return {
+        reply: `हजुरलाई धेरै धेरै स्वागत छ! म सधैं हजुरको व्यापार सहयोगका लागि तयार छु। फेरि कुनै काम परेमा वा नयाँ हिसाब सोध्नुपरेमा म तयार छु, आजलाई यति नै! हजुरको दिन शुभ रहोस्।`,
+        source: "Bajar ko Sathi AI",
+      };
+    }
+
+    // 2. Natural greetings
     const greetings = ["hello", "hi", "hey", "नमस्ते", "नमस्कार", "हेल्लो", "गुड मर्निङ", "good morning", "के छ", "सञ्चै"];
     if (greetings.some((w) => q === w || q.startsWith(w + " ") || q.startsWith(w + "!") || q.startsWith(w + "?"))) {
       return {

@@ -237,7 +237,7 @@
         <div class="brand-title">RetailIQ Nepal</div>
         <div class="brand-subtitle">साप्ताहिक व्यापार कार्यसम्पादन प्रतिवेदन (Weekly Performance Report)</div>
         <div style="font-size: 8pt; color: #64748b; margin-top: 4px;">
-          अवधि: <strong>{{ week_label }}</strong> • मिति: <strong>{{ nepali_date }}</strong>
+          अवधि: <strong>{{ week_label }}</strong> • मिति: <strong>{{ nepali_date }}</strong> • लेखा अवधि: <strong style="color: #059669;">{{ fiscal_year }}</strong>
         </div>
       </td>
       <td class="store-meta">
@@ -274,6 +274,34 @@
       </td>
     </tr>
   </table>
+
+  <!-- 2-Week Comparative Sales Growth Section (२ हप्ते तुलनात्मक बिक्री वृद्धि) -->
+  {% if two_week_growth %}
+  <div class="section-title">📈 २ हप्ते तुलनात्मक बिक्री वृद्धि विश्लेषण (2-Week Sales Growth & Momentum)</div>
+  <table style="width: 100%; border-collapse: separate; border-spacing: 8px 0; margin-bottom: 16px;">
+    <tr>
+      <td style="background-color: #f0fdf4; border: 1.5px solid #86efac; border-radius: 6px; padding: 10px 12px; width: 33%;">
+        <div style="font-size: 7.5pt; color: #166534; font-weight: 700; text-transform: uppercase;">चालु हप्ता (हप्ता १ / Current 7D)</div>
+        <div style="font-size: 13pt; font-weight: 800; color: #15803d; margin: 2px 0;">Rs. {{ "{:,.2f}".format(two_week_growth.current_week_revenue_npr) }}</div>
+        <div style="font-size: 7.5pt; color: #166534;">कारोबार: <strong>{{ two_week_growth.current_week_invoices }}</strong> बिलहरू</div>
+      </td>
+      <td style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px; width: 33%;">
+        <div style="font-size: 7.5pt; color: #475569; font-weight: 700; text-transform: uppercase;">अघिल्लो हप्ता (हप्ता २ / Prior 7D)</div>
+        <div style="font-size: 13pt; font-weight: 800; color: #334155; margin: 2px 0;">Rs. {{ "{:,.2f}".format(two_week_growth.prior_week_revenue_npr) }}</div>
+        <div style="font-size: 7.5pt; color: #64748b;">कारोबार: <strong>{{ two_week_growth.prior_week_invoices }}</strong> बिलहरू</div>
+      </td>
+      <td style="background-color: {% if two_week_growth.revenue_growth_pct >= 0 %}#ecfdf5{% else %}#fef2f2{% endif %}; border: 1.5px solid {% if two_week_growth.revenue_growth_pct >= 0 %}#a7f3d0{% else %}#fecaca{% endif %}; border-radius: 6px; padding: 10px 12px; width: 34%;">
+        <div style="font-size: 7.5pt; color: {% if two_week_growth.revenue_growth_pct >= 0 %}#047857{% else %}#b91c1c{% endif %}; font-weight: 700; text-transform: uppercase;">२ हप्ते वृद्धिदर (2-Week Growth)</div>
+        <div style="font-size: 14pt; font-weight: 900; color: {% if two_week_growth.revenue_growth_pct >= 0 %}#059669{% else %}#dc2626{% endif %}; margin: 2px 0;">
+          {% if two_week_growth.revenue_growth_pct > 0 %}+{% endif %}{{ two_week_growth.revenue_growth_pct }}%
+        </div>
+        <div style="font-size: 7.5pt; font-weight: 600; color: {% if two_week_growth.revenue_growth_pct >= 0 %}#047857{% else %}#b91c1c{% endif %};">
+          {{ two_week_growth.growth_status }} (नाफा वृद्धि: {% if two_week_growth.profit_growth_pct > 0 %}+{% endif %}{{ two_week_growth.profit_growth_pct }}%)
+        </div>
+      </td>
+    </tr>
+  </table>
+  {% endif %}
 
   <!-- Dual Column: Top Selling Products & Payment Channels -->
   <table class="columns-table">

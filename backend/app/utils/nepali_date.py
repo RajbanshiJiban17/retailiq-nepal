@@ -89,3 +89,41 @@ def get_current_nepali_date_str(target_date: date = None, include_day_of_week: b
         day_name = NEPALI_DAYS[target_date.weekday()]
         return f"{dev_year} {month_name} {dev_day}, {day_name}"
     return f"{dev_year} {month_name} {dev_day}"
+
+
+def get_fiscal_year_bs(target_date: date = None) -> str:
+    """
+    Returns the Nepali accounting Fiscal Year (आर्थिक वर्ष), e.g., "आ.व. २०८१/८२ (FY 2024/25)"
+    Nepali fiscal year starts in Shrawan (Month index 3) and ends in Ashadh (Month index 2).
+    """
+    if target_date is None:
+        target_date = date.today()
+    elif isinstance(target_date, datetime):
+        target_date = target_date.date()
+
+    matched_year = BS_CALENDAR_DATA[-1]
+    for i, item in enumerate(BS_CALENDAR_DATA):
+        start = item["ad_start"]
+        next_start = BS_CALENDAR_DATA[i + 1]["ad_start"] if i + 1 < len(BS_CALENDAR_DATA) else date(2099, 1, 1)
+        if start <= target_date < next_start:
+            matched_year = item
+            break
+
+    day_offset = (target_date - matched_year["ad_start"]).days
+    bs_month_idx = 0
+
+    for m, days_in_month in enumerate(matched_year["days_in_months"]):
+        if day_offset < days_in_month:
+            bs_month_idx = m
+            break
+        day_offset -= days_in_month
+
+    bs_year = matched_year["bs_year"]
+    if bs_month_idx >= 3:  # Shrawan to Chaitra
+        fy_bs = f"आ.व. {to_devanagari(bs_year)}/{to_devanagari(bs_year + 1)[-2:]}"
+        fy_ad = f"FY {target_date.year}/{str(target_date.year + 1)[-2:]}"
+    else:  # Baisakh, Jestha, Ashadh
+        fy_bs = f"आ.व. {to_devanagari(bs_year - 1)}/{to_devanagari(bs_year)[-2:]}"
+        fy_ad = f"FY {target_date.year - 1}/{str(target_date.year)[-2:]}"
+
+    return f"{fy_bs} ({fy_ad})"
