@@ -132,8 +132,7 @@ load_catalog_from_disk()
 
 
 def update_catalog_from_etl_records(business_id: str, items: List[InventoryItem]):
-    global ACTIVE_CATALOG
-    ACTIVE_CATALOG = items
+    global TENANT_CATALOGS
     TENANT_CATALOGS[str(business_id)] = items
     save_catalog_to_disk()
 
@@ -141,26 +140,31 @@ def update_catalog_from_etl_records(business_id: str, items: List[InventoryItem]
 @router.get(
     "",
     response_model=List[InventoryItem],
-    summary="List inventory items",
-    description="Retrieve catalog items with category and stock filtering options.",
+    summary="List inventory items for tenant",
+    description="Retrieve catalog items strictly isolated by tenant business UUID with filtering.",
 )
 async def list_items(
-    business_id: Optional[str] = Query(None, description="Optional tenant business UUID"),
+    business_id: Optional[str] = Query(None, description="Tenant business UUID"),
     category: Optional[str] = None,
     low_stock_only: bool = False,
     search: Optional[str] = None,
 ) -> List[InventoryItem]:
     items: List[InventoryItem] = []
     if business_id:
-        # Strictly return this tenant's items (or empty list if no items uploaded yet)
-        items = TENANT_CATALOGS.get(str(business_id), [])
-        # For default demo tenant or initial exploration if nothing uploaded, provide starter items
-        if not items and str(business_id) == "00000000-0000-0000-0000-000000000001":
-            items = SAMPLE_ITEMS
+        bid = str(business_id)
+        if bid in TENANT_CATALOGS:
+            items = list(TENANT_CATALOGS[bid])
+        elif bid in ("00000000-0000-0000-0000-000000000001", "11111111-1111-1111-1111-111111111111"):
+            # Default demo store gets initial sample items
+            items = list(SAMPLE_ITEMS)
+            TENANT_CATALOGS[bid] = list(items)
+        else:
+            # Clean empty slate for new registered store
+            items = []
     elif ACTIVE_CATALOG:
-        items = ACTIVE_CATALOG
+        items = list(ACTIVE_CATALOG)
     else:
-        items = SAMPLE_ITEMS
+        items = list(SAMPLE_ITEMS)
 
     if category and category.lower() != "all":
         items = [i for i in items if i.category.lower() == category.lower()]
@@ -178,8 +182,14 @@ async def list_items(
     response_model=InventoryItem,
     summary="Get single inventory item by ID",
 )
-async def get_item(item_id: int) -> InventoryItem:
-    pool = ACTIVE_CATALOG if ACTIVE_CATALOG else SAMPLE_ITEMS
+async def get_item(item_id: int, business_id: Optional[str] = None) -> InventoryItem:
+    if business_id and str(business_id) in TENANT_CATALOGS:
+        pool = TENANT_CATALOGS[str(business_id)]
+    elif ACTIVE_CATALOG:
+        pool = ACTIVE_CATALOG
+    else:
+        pool = SAMPLE_ITEMS
+
     for item in pool:
         if item.id == item_id:
             return item
@@ -193,29 +203,40 @@ async def get_item(item_id: int) -> InventoryItem:
     "",
     response_model=InventoryItem,
     status_code=status.HTTP_201_CREATED,
-    summary="Add new inventory item",
+    summary="Add new inventory item for tenant",
 )
 async def create_item(payload: ItemCreate, business_id: Optional[str] = None) -> InventoryItem:
-    global ACTIVE_CATALOG
-    if not ACTIVE_CATALOG:
-        ACTIVE_CATALOG = list(SAMPLE_ITEMS)
+    global ACTIVE_CATALOG, TENANT_CATALOGS
 
-    new_id = max([i.id for i in ACTIVE_CATALOG], default=0) + 1
-    new_item = InventoryItem(
-        id=new_id,
-        sku=payload.sku.strip().upper(),
-        name=payload.name.strip(),
-        category=payload.category.strip(),
-        quantity=payload.quantity,
-        price_npr=payload.price_npr,
-        reorder_level=payload.reorder_level,
-    )
-    ACTIVE_CATALOG.insert(0, new_item)
     if business_id:
-        if str(business_id) not in TENANT_CATALOGS:
-            TENANT_CATALOGS[str(business_id)] = list(ACTIVE_CATALOG)
-        else:
-            TENANT_CATALOGS[str(business_id)].insert(0, new_item)
+        bid = str(business_id)
+        tenant_list = TENANT_CATALOGS.setdefault(bid, [])
+        new_id = max([i.id for i in tenant_list], default=0) + 1
+        new_item = InventoryItem(
+            id=new_id,
+            sku=payload.sku.strip().upper(),
+            name=payload.name.strip(),
+            category=payload.category.strip(),
+            quantity=payload.quantity,
+            price_npr=payload.price_npr,
+            reorder_level=payload.reorder_level,
+        )
+        tenant_list.insert(0, new_item)
+    else:
+        if not ACTIVE_CATALOG:
+            ACTIVE_CATALOG = list(SAMPLE_ITEMS)
+        new_id = max([i.id for i in ACTIVE_CATALOG], default=0) + 1
+        new_item = InventoryItem(
+            id=new_id,
+            sku=payload.sku.strip().upper(),
+            name=payload.name.strip(),
+            category=payload.category.strip(),
+            quantity=payload.quantity,
+            price_npr=payload.price_npr,
+            reorder_level=payload.reorder_level,
+        )
+        ACTIVE_CATALOG.insert(0, new_item)
+
     save_catalog_to_disk()
     return new_item
 
@@ -226,13 +247,23 @@ async def create_item(payload: ItemCreate, business_id: Optional[str] = None) ->
     summary="Update inventory item stock or price",
 )
 async def update_item(item_id: int, payload: ItemUpdate, business_id: Optional[str] = None) -> InventoryItem:
-    global ACTIVE_CATALOG
-    if not ACTIVE_CATALOG:
-        ACTIVE_CATALOG = list(SAMPLE_ITEMS)
+    global ACTIVE_CATALOG, TENANT_CATALOGS
 
+    pool = None
+    if business_id:
+        bid = str(business_id)
+        pool = TENANT_CATALOGS.get(bid)
+
+    if pool is None:
+        if not ACTIVE_CATALOG:
+            ACTIVE_CATALOG = list(SAMPLE_ITEMS)
+        pool = ACTIVE_CATALOG
+
+    target_idx = -1
     target: Optional[InventoryItem] = None
-    for i, item in enumerate(ACTIVE_CATALOG):
+    for i, item in enumerate(pool):
         if item.id == item_id:
+            target_idx = i
             updated_data = item.dict()
             if payload.sku is not None:
                 updated_data["sku"] = payload.sku.strip().upper()
@@ -248,14 +279,11 @@ async def update_item(item_id: int, payload: ItemUpdate, business_id: Optional[s
                 updated_data["reorder_level"] = payload.reorder_level
 
             target = InventoryItem(**updated_data)
-            ACTIVE_CATALOG[i] = target
+            pool[target_idx] = target
             break
 
     if not target:
         raise HTTPException(status_code=404, detail="Item not found")
-
-    if business_id and str(business_id) in TENANT_CATALOGS:
-        TENANT_CATALOGS[str(business_id)] = list(ACTIVE_CATALOG)
 
     save_catalog_to_disk()
     return target
@@ -266,15 +294,35 @@ async def update_item(item_id: int, payload: ItemUpdate, business_id: Optional[s
     summary="Delete inventory item",
 )
 async def delete_item(item_id: int, business_id: Optional[str] = None):
-    global ACTIVE_CATALOG
-    if not ACTIVE_CATALOG:
-        ACTIVE_CATALOG = list(SAMPLE_ITEMS)
+    global ACTIVE_CATALOG, TENANT_CATALOGS
 
-    ACTIVE_CATALOG = [i for i in ACTIVE_CATALOG if i.id != item_id]
-    if business_id and str(business_id) in TENANT_CATALOGS:
-        TENANT_CATALOGS[str(business_id)] = [i for i in TENANT_CATALOGS[str(business_id)] if i.id != item_id]
+    if business_id:
+        bid = str(business_id)
+        if bid in TENANT_CATALOGS:
+            TENANT_CATALOGS[bid] = [i for i in TENANT_CATALOGS[bid] if i.id != item_id]
+    else:
+        ACTIVE_CATALOG = [i for i in ACTIVE_CATALOG if i.id != item_id]
+
     save_catalog_to_disk()
     return {"status": "success", "message": f"Item {item_id} deleted"}
+
+
+@router.post(
+    "/seed-sample-catalog",
+    summary="Seed standard Nepali grocery catalog for tenant",
+    description="Loads standard sample items strictly into this merchant's isolated inventory.",
+)
+async def seed_tenant_sample_catalog(business_id: str = Query(..., description="Target Tenant Business UUID")):
+    global TENANT_CATALOGS
+    bid = str(business_id)
+    TENANT_CATALOGS[bid] = list(SAMPLE_ITEMS)
+    save_catalog_to_disk()
+    return {
+        "status": "success",
+        "message": "यस पसलका लागि नमुना सामानहरू सफलतापूर्वक थपियो (Sample items seeded)",
+        "count": len(SAMPLE_ITEMS),
+        "items": TENANT_CATALOGS[bid],
+    }
 
 
 @router.post(
@@ -282,10 +330,14 @@ async def delete_item(item_id: int, business_id: Optional[str] = None):
     summary="Reset catalog to modern retail defaults",
 )
 async def reset_catalog(business_id: Optional[str] = None):
-    global ACTIVE_CATALOG
-    ACTIVE_CATALOG = list(SAMPLE_ITEMS)
-    if business_id and str(business_id) in TENANT_CATALOGS:
-        TENANT_CATALOGS[str(business_id)] = list(SAMPLE_ITEMS)
+    global ACTIVE_CATALOG, TENANT_CATALOGS
+    if business_id:
+        bid = str(business_id)
+        TENANT_CATALOGS[bid] = list(SAMPLE_ITEMS)
+        items = TENANT_CATALOGS[bid]
+    else:
+        ACTIVE_CATALOG = list(SAMPLE_ITEMS)
+        items = ACTIVE_CATALOG
     save_catalog_to_disk()
-    return {"status": "success", "message": "Catalog reset to defaults", "items": ACTIVE_CATALOG}
+    return {"status": "success", "message": "Catalog reset to defaults", "items": items}
 

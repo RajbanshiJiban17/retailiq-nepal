@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 Hours
 
+    # Master Secret Key for platform admin registration onboarding
+    ADMIN_REGISTRATION_SECRET: str = "retailiq-admin-secret-2026"
+
     # PostgreSQL Database URL
 
     # Supports postgresql:// or postgres:// (Render/Supabase format) and converts for asyncpg

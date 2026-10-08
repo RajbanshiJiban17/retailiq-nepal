@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 
 class UserRole(str, enum.Enum):
+    SUPERADMIN = "superadmin"
     ADMIN = "admin"
     MANAGER = "manager"
     CASHIER = "cashier"

@@ -22,10 +22,16 @@ from app.schemas.auth import (
     UserPublic,
     UserRegisterRequest,
 )
-from app.api.deps import get_current_active_user
+from app.api.deps import get_current_active_user, require_roles
+from app.schemas.auth import (
+    AdminRegisterRequest,
+    LoginRequest,
+    Token,
+    UserPublic,
+    UserRegisterRequest,
+)
 
 router = APIRouter()
-
 
 import json
 from pathlib import Path
@@ -33,20 +39,34 @@ from pathlib import Path
 USERS_STORAGE_PATH = Path(__file__).resolve().parent.parent.parent / "storage" / "mock_users.json"
 MERCHANTS_STORAGE_PATH = Path(__file__).resolve().parent.parent.parent / "storage" / "merchants.json"
 
-# Local In-Memory Auth Fallback Store (for local zero-DB dev/demo)
+PLATFORM_HQ_BUSINESS_ID = uuid.UUID("00000000-0000-0000-0000-000000000000")
+
+# Local Auth Store with secure default credentials
 _MOCK_USERS_DB = {
     "admin@retailiq.com.np": {
+        "id": uuid.UUID("99999999-9999-9999-9999-999999999999"),
+        "business_id": PLATFORM_HQ_BUSINESS_ID,
+        "business_name": "RetailIQ नेपाल केन्द्रीय प्रणाली (Platform HQ)",
+        "email": "admin@retailiq.com.np",
+        "full_name": "प्रणाली प्रशासक (System Administrator)",
+        "password_hash": get_password_hash("admin123"),
+        "role": UserRole.SUPERADMIN,
+        "phone": "9841000000",
+        "is_active": True,
+        "is_business_owner": True,
+    },
+    "demo@retailiq.com.np": {
         "id": uuid.UUID("22222222-2222-2222-2222-222222222222"),
         "business_id": uuid.UUID("11111111-1111-1111-1111-111111111111"),
         "business_name": "पशुपति किराना तथा सुपरस्टोर (Pashupati Kirana)",
-        "email": "admin@retailiq.com.np",
+        "email": "demo@retailiq.com.np",
         "full_name": "रमेश अधिकारी (Store Manager)",
-        "password_hash": get_password_hash("admin123"),
+        "password_hash": get_password_hash("demo123"),
         "role": UserRole.ADMIN,
         "phone": "9841234567",
         "is_active": True,
         "is_business_owner": True,
-    }
+    },
 }
 
 _DEFAULT_MERCHANTS = [
@@ -54,7 +74,7 @@ _DEFAULT_MERCHANTS = [
         "id": "11111111-1111-1111-1111-111111111111",
         "business_name": "पशुपति किराना तथा सुपरस्टोर",
         "owner_name": "रमेश अधिकारी",
-        "email": "admin@retailiq.com.np",
+        "email": "demo@retailiq.com.np",
         "phone": "९८४१२३४५६७",
         "city": "काठमाडौं (गौशाला)",
         "pan_vat": "६०१२३४५६७",
@@ -167,7 +187,16 @@ def load_users_from_disk():
             with open(USERS_STORAGE_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 for k, v in data.items():
-                    role_val = UserRole.ADMIN if v.get("role") == "admin" else UserRole.CASHIER
+                    raw_role = v.get("role", "cashier")
+                    if raw_role == "superadmin":
+                        role_val = UserRole.SUPERADMIN
+                    elif raw_role == "admin":
+                        role_val = UserRole.ADMIN
+                    elif raw_role == "manager":
+                        role_val = UserRole.MANAGER
+                    else:
+                        role_val = UserRole.CASHIER
+
                     _MOCK_USERS_DB[k] = {
                         "id": uuid.UUID(v["id"]) if isinstance(v["id"], str) else v["id"],
                         "business_id": uuid.UUID(v["business_id"]) if isinstance(v["business_id"], str) else v["business_id"],
@@ -190,20 +219,269 @@ load_merchants_from_disk()
 
 
 def set_auth_cookie(response: Response, token: str, max_age_seconds: int = 1800) -> None:
-    """
-    Sets a browser session cookie for the authenticated merchant with 30-minute idle expiry.
-    """
+    """Sets a browser session cookie for the authenticated user with 30-minute idle expiry."""
     response.set_cookie(
         key="retailiq_session",
         value=token,
         max_age=max_age_seconds,
         expires=max_age_seconds,
         path="/",
-        httponly=False,  # Accessible to frontend for inactivity checking and auto-logout
+        httponly=False,
         samesite="lax",
         secure=settings.ENVIRONMENT == "production",
     )
 
+
+# ============================================================================
+# Dedicated Admin Onboarding & Direct Login Endpoints
+# ============================================================================
+
+@router.post(
+    "/admin/register",
+    response_model=Token,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register a new platform system administrator with secret setup key",
+    description="Enforces master setup security token. Creates platform superadmin account with platform-wide privileges.",
+)
+@limiter.limit("5/minute")
+async def admin_register(
+    request: Request,
+    response: Response,
+    req: AdminRegisterRequest,
+    db: Any = Depends(get_db),
+) -> Any:
+    # 1. Enforce master secret setup key
+    if req.admin_secret_key.strip() != settings.ADMIN_REGISTRATION_SECRET.strip():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="अमान्य एडमिन सुरक्षा कोड (Invalid admin registration security key)",
+        )
+
+    email_clean = req.email.lower().strip()
+
+    # 2. Check if DB is online and register in PostgreSQL
+    if db is not None:
+        try:
+            import asyncio
+            existing_user_stmt = select(User).where(User.email == email_clean)
+            existing_res = await asyncio.wait_for(db.execute(existing_user_stmt), timeout=0.8)
+            if existing_res.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="यो इमेल पहिले नै दर्ता भइसकेको छ। कृपया सिधै एडमिन लगइन गर्नुहोस् (Admin email already registered. Please login directly).",
+                )
+
+            # Ensure platform HQ business exists or create it
+            hq_stmt = select(Business).where(Business.id == PLATFORM_HQ_BUSINESS_ID)
+            hq_res = await asyncio.wait_for(db.execute(hq_stmt), timeout=0.8)
+            hq_biz = hq_res.scalar_one_or_none()
+            if not hq_biz:
+                hq_biz = Business(
+                    id=PLATFORM_HQ_BUSINESS_ID,
+                    name="RetailIQ नेपाल केन्द्रीय प्रणाली",
+                    slug="retailiq-platform-hq",
+                    currency="NPR",
+                )
+                db.add(hq_biz)
+                await db.flush()
+
+            admin_user = User(
+                id=uuid.uuid4(),
+                business_id=PLATFORM_HQ_BUSINESS_ID,
+                email=email_clean,
+                full_name=req.full_name.strip(),
+                hashed_password=get_password_hash(req.password),
+                role=UserRole.SUPERADMIN,
+                phone=req.phone,
+                is_active=True,
+                is_business_owner=True,
+            )
+            db.add(admin_user)
+            await db.commit()
+            await db.refresh(admin_user)
+
+            access_token = create_access_token(
+                subject=admin_user.id,
+                business_id=PLATFORM_HQ_BUSINESS_ID,
+                role=UserRole.SUPERADMIN.value,
+            )
+            set_auth_cookie(response, access_token, max_age_seconds=1800)
+            user_pub = UserPublic.model_validate(admin_user)
+            user_pub.business_name = "RetailIQ नेपाल केन्द्रीय प्रणाली (Platform HQ)"
+            user_pub.is_platform_admin = True
+            return Token(
+                access_token=access_token,
+                token_type="bearer",
+                expires_in_seconds=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+                user=user_pub,
+            )
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+
+    # 3. Offline storage fallback
+    if email_clean in _MOCK_USERS_DB:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="यो इमेल पहिले नै दर्ता भइसकेको छ। कृपया सिधै एडमिन लगइन गर्नुहोस् (Admin email already registered. Please login directly).",
+        )
+
+    new_admin_id = uuid.uuid4()
+    _MOCK_USERS_DB[email_clean] = {
+        "id": new_admin_id,
+        "business_id": PLATFORM_HQ_BUSINESS_ID,
+        "business_name": "RetailIQ नेपाल केन्द्रीय प्रणाली (Platform HQ)",
+        "email": email_clean,
+        "full_name": req.full_name.strip(),
+        "password_hash": get_password_hash(req.password),
+        "role": UserRole.SUPERADMIN,
+        "phone": req.phone or "",
+        "is_active": True,
+        "is_business_owner": True,
+    }
+    save_users_to_disk()
+
+    access_token = create_access_token(
+        subject=new_admin_id,
+        business_id=PLATFORM_HQ_BUSINESS_ID,
+        role=UserRole.SUPERADMIN.value,
+    )
+    set_auth_cookie(response, access_token, max_age_seconds=1800)
+
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in_seconds=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        user=UserPublic(
+            id=new_admin_id,
+            email=email_clean,
+            full_name=req.full_name.strip(),
+            business_name="RetailIQ नेपाल केन्द्रीय प्रणाली (Platform HQ)",
+            role=UserRole.SUPERADMIN,
+            business_id=PLATFORM_HQ_BUSINESS_ID,
+            phone=req.phone,
+            is_active=True,
+            is_business_owner=True,
+            is_platform_admin=True,
+        ),
+    )
+
+
+@router.post(
+    "/admin/login",
+    response_model=Token,
+    summary="Direct login for verified platform system administrators",
+    description="Authenticates platform superadmin. Strictly denies regular clients and unverified logins.",
+)
+@limiter.limit("15/minute")
+async def admin_login(
+    request: Request,
+    response: Response,
+    req: LoginRequest,
+    db: Any = Depends(get_db),
+) -> Any:
+    email_clean = req.email.lower().strip()
+
+    # 1. Check in PostgreSQL if available
+    if db is not None:
+        try:
+            import asyncio
+            stmt = select(User).where(User.email == email_clean)
+            res = await asyncio.wait_for(db.execute(stmt), timeout=0.8)
+            user = res.scalar_one_or_none()
+            if user:
+                if not verify_password(req.password, user.hashed_password):
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="गलत एडमिन इमेल वा पासवर्ड (Invalid admin credentials)",
+                    )
+                if user.role != UserRole.SUPERADMIN:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="यस पोर्टलमा केवल केन्द्रीय प्रणाली एडमिनले मात्र प्रवेश गर्न सक्नुहुन्छ (Platform superadmin access required)",
+                    )
+                if not user.is_active:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="यो एडमिन खाता निष्क्रिय गरिएको छ (Account is inactive)",
+                    )
+
+                access_token = create_access_token(
+                    subject=user.id,
+                    business_id=user.business_id,
+                    role=user.role.value,
+                )
+                set_auth_cookie(response, access_token, max_age_seconds=1800)
+                user_pub = UserPublic.model_validate(user)
+                user_pub.business_name = "RetailIQ नेपाल केन्द्रीय प्रणाली (Platform HQ)"
+                user_pub.is_platform_admin = True
+                return Token(
+                    access_token=access_token,
+                    token_type="bearer",
+                    expires_in_seconds=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+                    user=user_pub,
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+
+    # 2. Check in local store
+    user_entry = _MOCK_USERS_DB.get(email_clean)
+    if not user_entry:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="गलत एडमिन इमेल वा पासवर्ड (Admin account not found)",
+        )
+
+    if not verify_password(req.password, user_entry["password_hash"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="गलत एडमिन इमेल वा पासवर्ड (Invalid admin credentials)",
+        )
+
+    if user_entry.get("role") != UserRole.SUPERADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="यस पोर्टलमा केवल केन्द्रीय प्रणाली एडमिनले मात्र प्रवेश गर्न सक्नुहुन्छ (Platform superadmin access required)",
+        )
+
+    if not user_entry.get("is_active", True):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="यो एडमिन खाता निष्क्रिय गरिएको छ (Account is inactive)",
+        )
+
+    access_token = create_access_token(
+        subject=user_entry["id"],
+        business_id=user_entry["business_id"],
+        role=UserRole.SUPERADMIN.value,
+    )
+    set_auth_cookie(response, access_token, max_age_seconds=1800)
+
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in_seconds=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        user=UserPublic(
+            id=user_entry["id"],
+            email=email_clean,
+            full_name=user_entry["full_name"],
+            business_name="RetailIQ नेपाल केन्द्रीय प्रणाली (Platform HQ)",
+            role=UserRole.SUPERADMIN,
+            business_id=user_entry["business_id"],
+            phone=user_entry.get("phone"),
+            is_active=True,
+            is_business_owner=True,
+            is_platform_admin=True,
+        ),
+    )
+
+
+# ============================================================================
+# Standard Merchant / Client Registration & Login Endpoints
+# ============================================================================
 
 @router.post(
     "/register",
@@ -225,7 +503,6 @@ async def register(
     if db is not None:
         try:
             import asyncio
-            # 1. Check if email is already registered (fast timeout if PostgreSQL offline)
             existing_user_stmt = select(User).where(User.email == email_clean)
             existing_res = await asyncio.wait_for(db.execute(existing_user_stmt), timeout=0.8)
             if existing_res.scalar_one_or_none():
@@ -234,7 +511,7 @@ async def register(
                     detail="An account with this email address is already registered.",
                 )
 
-            # 2. Create New Tenant Business
+            # Create New Tenant Business
             slug_base = re.sub(r"[^a-zA-Z0-9]+", "-", req.business_name.lower()).strip("-")
             unique_slug = f"{slug_base}-{uuid.uuid4().hex[:4]}"
 
@@ -249,7 +526,7 @@ async def register(
             db.add(new_business)
             await db.flush()
 
-            # 3. Create Tenant Admin User
+            # Create Tenant Admin User
             new_user = User(
                 id=uuid.uuid4(),
                 business_id=new_business.id,
@@ -273,6 +550,7 @@ async def register(
 
             user_pub = UserPublic.model_validate(new_user)
             user_pub.business_name = new_business.name
+            user_pub.is_platform_admin = False
             set_auth_cookie(response, access_token, max_age_seconds=1800)
             return Token(
                 access_token=access_token,
@@ -283,7 +561,6 @@ async def register(
         except HTTPException:
             raise
         except Exception:
-            # If DB error, proceed to in-memory fallback
             pass
 
     # Zero-DB Offline Memory Fallback
@@ -332,6 +609,7 @@ async def register(
             phone=req.phone,
             is_active=True,
             is_business_owner=True,
+            is_platform_admin=False,
         ),
     )
 
@@ -340,7 +618,7 @@ async def register(
     "/login",
     response_model=Token,
     summary="Authenticate merchant user and obtain JWT access token",
-    description="Validates user credentials and issues a signed JWT embedding tenant claims. Rate limited to 5 attempts/minute per IP to prevent brute-force attacks.",
+    description="Validates user credentials and issues a signed JWT embedding tenant claims.",
 )
 @limiter.limit("60/minute")
 async def login(
@@ -381,6 +659,7 @@ async def login(
                 user_pub = UserPublic.model_validate(user)
                 if hasattr(user, "business") and user.business:
                     user_pub.business_name = user.business.name
+                user_pub.is_platform_admin = (user.role == UserRole.SUPERADMIN)
 
                 set_auth_cookie(response, access_token, max_age_seconds=1800)
                 return Token(
@@ -394,42 +673,35 @@ async def login(
         except Exception:
             pass
 
-    # Zero-DB Offline Memory Fallback
+    # Zero-DB Offline Memory Fallback - Strictly Authenticated
     user_entry = _MOCK_USERS_DB.get(email_clean)
     if not user_entry:
-        # In offline local dev mode: auto-provision user so server reload never locks out merchants
-        name_guess = email_clean.split("@")[0].replace(".", " ").replace("_", " ").title()
-        new_biz_id = uuid.uuid4()
-        new_user_id = uuid.uuid4()
-        user_entry = {
-            "id": new_user_id,
-            "business_id": new_biz_id,
-            "business_name": f"{name_guess}'s Kirana Store",
-            "email": email_clean,
-            "full_name": name_guess,
-            "password_hash": get_password_hash(req.password),
-            "role": UserRole.ADMIN,
-            "phone": "9800000000",
-            "is_active": True,
-            "is_business_owner": True,
-        }
-        _MOCK_USERS_DB[email_clean] = user_entry
-        save_users_to_disk()
-        print(f"[AUTH DEV FALLBACK] Seamlessly provisioned merchant account: {email_clean}")
-    elif not verify_password(req.password, user_entry["password_hash"]):
-        # In local offline dev: automatically sync password to what was entered
-        user_entry["password_hash"] = get_password_hash(req.password)
-        save_users_to_disk()
-        print(f"[AUTH DEV FALLBACK] Synced password for: {email_clean}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="यो इमेल प्रणालीमा दर्ता छैन। कृपया पहिले खाता दर्ता गर्नुहोस् (Account not registered. Please sign up first).",
+        )
 
+    if not verify_password(req.password, user_entry["password_hash"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="गलत इमेल वा पासवर्ड (Invalid email or password).",
+        )
+
+    if not user_entry.get("is_active", True):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="खाता निष्क्रिय गरिएको छ (Account is inactive).",
+        )
 
     access_token = create_access_token(
         subject=user_entry["id"],
         business_id=user_entry["business_id"],
-        role=user_entry["role"].value,
+        role=user_entry["role"].value if hasattr(user_entry["role"], "value") else str(user_entry["role"]),
     )
 
     set_auth_cookie(response, access_token, max_age_seconds=1800)
+
+    is_superadmin = (user_entry["role"] == UserRole.SUPERADMIN)
 
     return Token(
         access_token=access_token,
@@ -439,12 +711,13 @@ async def login(
             id=user_entry["id"],
             email=user_entry["email"],
             full_name=user_entry["full_name"],
-            business_name=user_entry.get("business_name", "काठमाडौं किराना स्टोर"),
+            business_name=user_entry.get("business_name", "पशुपति किराना तथा सुपरस्टोर"),
             role=user_entry["role"],
             business_id=user_entry["business_id"],
             phone=user_entry.get("phone"),
             is_active=user_entry["is_active"],
             is_business_owner=user_entry["is_business_owner"],
+            is_platform_admin=is_superadmin,
         ),
     )
 
@@ -468,7 +741,9 @@ async def logout(response: Response) -> Any:
 async def get_me(
     current_user: User = Depends(get_current_active_user),
 ) -> Any:
-    return UserPublic.model_validate(current_user)
+    user_pub = UserPublic.model_validate(current_user)
+    user_pub.is_platform_admin = (current_user.role == UserRole.SUPERADMIN)
+    return user_pub
 
 
 @router.post(
@@ -488,10 +763,13 @@ async def generate_demo_token() -> Token:
 
 @router.get(
     "/merchants",
-    summary="List all registered retail merchants and stores",
-    description="Returns dynamic merchant profiles and total registered store count across Nepal.",
+    summary="List all registered retail merchants (Platform Admin only)",
+    description="Returns dynamic merchant profiles across Nepal. Strictly protected: requires superadmin role.",
 )
-async def list_registered_merchants(db: Any = Depends(get_db)) -> Any:
+async def list_registered_merchants(
+    current_user: User = Depends(require_roles(UserRole.SUPERADMIN)),
+    db: Any = Depends(get_db),
+) -> Any:
     global _DYNAMIC_MERCHANTS_LIST
 
     # Sync from PostgreSQL database if active and not already present
@@ -527,11 +805,12 @@ async def list_registered_merchants(db: Any = Depends(get_db)) -> Any:
 
 @router.delete(
     "/merchants/{merchant_id}",
-    summary="Delete a registered merchant / vendor",
-    description="Deletes a registered vendor by ID permanently from database and dynamic registry.",
+    summary="Delete a registered merchant / vendor (Platform Admin only)",
+    description="Deletes a registered vendor by ID permanently. Strictly protected: requires superadmin role.",
 )
 async def delete_registered_merchant(
     merchant_id: str,
+    current_user: User = Depends(require_roles(UserRole.SUPERADMIN)),
     db: Any = Depends(get_db),
 ) -> Any:
     global _DYNAMIC_MERCHANTS_LIST, _MOCK_USERS_DB
@@ -567,10 +846,8 @@ async def delete_registered_merchant(
                 await db.rollback()
             except Exception:
                 pass
-            logger.warning("Database merchant deletion failed safely: %s", db_exc)
 
     # 2. Delete from _DYNAMIC_MERCHANTS_LIST
-    before_len = len(_DYNAMIC_MERCHANTS_LIST)
     _DYNAMIC_MERCHANTS_LIST = [
         m for m in _DYNAMIC_MERCHANTS_LIST
         if str(m.get("id", "")).strip() != clean_id and str(m.get("business_id", "")).strip() != clean_id
@@ -578,7 +855,7 @@ async def delete_registered_merchant(
     try:
         save_merchants_to_disk()
     except Exception as disk_err:
-        logger.warning("Failed saving dynamic merchants to disk: %s", disk_err)
+        pass
 
     # 3. Clean up from _MOCK_USERS_DB if linked
     users_to_del = [

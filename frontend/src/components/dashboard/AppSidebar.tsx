@@ -309,8 +309,8 @@ export function AppSidebar({
               </button>
             )}
 
-            {/* Vendor Management */}
-            {onOpenVendorManagement && (
+            {/* Vendor Management - Strictly restricted to Platform Superadmin */}
+            {onOpenVendorManagement && (currentUser?.is_platform_admin || currentUser?.role === "superadmin") && (
               <button
                 onClick={() => {
                   onOpenVendorManagement();
@@ -319,15 +319,15 @@ export function AppSidebar({
                 className={`w-full flex items-center rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-300 hover:text-emerald-400 hover:bg-slate-800/60 transition group ${
                   collapsed ? "justify-center" : "gap-3 justify-between"
                 }`}
-                title="भेन्डर तथा पसल व्यवस्थापन"
+                title="केन्द्रीय पसल तथा भेन्डर व्यवस्थापन (Admin Only)"
               >
                 <div className="flex items-center gap-3">
                   <Store className="h-4 w-4 text-emerald-400" />
-                  {!collapsed && <span>पसल व्यवस्थापन</span>}
+                  {!collapsed && <span>केन्द्रीय पसल व्यवस्थापन</span>}
                 </div>
                 {!collapsed && (
-                  <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full">
-                    Admin
+                  <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/40 px-1.5 py-0.5 rounded-full font-bold">
+                    HQ Admin
                   </span>
                 )}
               </button>

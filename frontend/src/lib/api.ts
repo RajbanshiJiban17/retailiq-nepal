@@ -197,6 +197,54 @@ export async function loginUser(email: string, password: string, businessId?: st
 }
 
 /**
+ * Direct login for verified system administrators.
+ */
+export async function loginAdmin(email: string, password: string): Promise<any> {
+  const res = await fetch(`${getApiBaseUrl()}/api/v1/auth/admin/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Admin login failed" }));
+    throw new Error(formatApiError(err, "गलत एडमिन इमेल वा पासवर्ड (Invalid admin credentials)"));
+  }
+
+  return res.json();
+}
+
+/**
+ * Register a new system administrator with secret setup key.
+ */
+export async function registerAdmin(data: {
+  email: string;
+  password: string;
+  full_name: string;
+  admin_secret_key: string;
+  phone?: string;
+}): Promise<any> {
+  const res = await fetch(`${getApiBaseUrl()}/api/v1/auth/admin/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: data.email.trim().toLowerCase(),
+      password: data.password,
+      full_name: data.full_name.trim(),
+      admin_secret_key: data.admin_secret_key.trim(),
+      phone: data.phone?.trim() || undefined,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Admin registration failed" }));
+    throw new Error(formatApiError(err, "एडमिन दर्ता असफल भयो (Admin registration failed)"));
+  }
+
+  return res.json();
+}
+
+/**
  * Register new merchant tenant and owner.
  */
 export async function registerMerchant(data: {
@@ -320,11 +368,17 @@ export async function askBajarSathi(
 }
 
 /**
- * Fetch all registered merchants across Nepal with total count.
+ * Fetch all registered merchants across Nepal with total count (Platform Admin only).
  */
 export async function fetchRegisteredMerchants(): Promise<{ total_count: number; merchants: any[] }> {
   try {
-    const res = await fetch(`${getApiBaseUrl()}/api/v1/auth/merchants`, { cache: "no-store" });
+    const token = typeof window !== "undefined" ? localStorage.getItem("retailiq_token") : null;
+    const res = await fetch(`${getApiBaseUrl()}/api/v1/auth/merchants`, {
+      cache: "no-store",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
     if (res.ok) {
       return await res.json();
     }
@@ -344,17 +398,35 @@ export async function fetchRegisteredMerchants(): Promise<{ total_count: number;
 }
 
 /**
- * Permanently delete a registered merchant/vendor from system.
+ * Permanently delete a registered merchant/vendor from system (Platform Admin only).
  */
 export async function deleteRegisteredMerchant(merchantId: string): Promise<{ status: string; message: string; deleted_id: string; total_count: number }> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("retailiq_token") : null;
   const res = await fetch(`${getApiBaseUrl()}/api/v1/auth/merchants/${encodeURIComponent(merchantId)}`, {
     method: "DELETE",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.detail || `पसल हटाउन सकिएन (${res.status})`);
   }
   return await res.json();
+}
+
+/**
+ * Seed starter sample items strictly into a specific merchant's catalog.
+ */
+export async function seedSampleCatalog(businessId: string): Promise<any> {
+  const res = await fetch(`${getApiBaseUrl()}/api/v1/items/seed-sample-catalog?business_id=${encodeURIComponent(businessId)}`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Seed failed" }));
+    throw new Error(formatApiError(err, "नमुना सामान लोड गर्न सकिएन।"));
+  }
+  return res.json();
 }
 
 /**

@@ -18,6 +18,7 @@ class UserPublic(BaseModel):
     is_active: bool
     is_business_owner: bool
     business_id: uuid.UUID
+    is_platform_admin: bool = False
 
     class Config:
         from_attributes = True
@@ -38,13 +39,21 @@ class TokenPayload(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr = Field(..., description="Registered merchant user email")
+    email: EmailStr = Field(..., description="Registered merchant or admin user email")
     password: str = Field(..., min_length=6, description="User password")
     business_id: Optional[str] = Field(None, description="Optional tenant business UUID")
 
 
+class AdminRegisterRequest(BaseModel):
+    email: EmailStr = Field(..., description="Master system administrator email")
+    password: str = Field(..., min_length=6, description="Admin password (minimum 6 characters)")
+    full_name: str = Field(..., min_length=2, description="Admin full name")
+    admin_secret_key: str = Field(..., description="Master security key required for admin onboarding")
+    phone: Optional[str] = Field(None, description="Admin mobile number")
+
+
 class UserRegisterRequest(BaseModel):
-    email: EmailStr = Field(..., description="Store owner / admin email")
+    email: EmailStr = Field(..., description="Store owner / client email")
     password: str = Field(..., min_length=6, description="Password (minimum 6 characters)")
     full_name: str = Field(..., min_length=2, description="Full name in English or Devanagari")
     phone: Optional[str] = Field(None, description="Mobile contact number (+977)")

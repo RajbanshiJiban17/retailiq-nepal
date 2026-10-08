@@ -29,6 +29,7 @@ export interface UserProfile {
   phone?: string;
   is_active: boolean;
   is_business_owner: boolean;
+  is_platform_admin?: boolean;
 }
 
 export interface AuthResponse {

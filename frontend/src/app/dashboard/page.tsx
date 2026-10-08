@@ -20,7 +20,7 @@ import { MerchantAuthGateway } from "@/components/dashboard/MerchantAuthGateway"
 import { AdminVendorManagementModal } from "@/components/dashboard/AdminVendorManagementModal";
 import { InventoryManagementModal } from "@/components/dashboard/InventoryManagementModal";
 import { UserProfile, ETLUploadSummary, CurrentSubscription } from "@/types";
-import { loginUser, fetchCurrentSubscription, fetchRegisteredMerchants } from "@/lib/api";
+import { loginUser, fetchCurrentSubscription, fetchRegisteredMerchants, seedSampleCatalog } from "@/lib/api";
 import { getNepaliDate } from "@/lib/nepaliDate";
 import { checkSessionValidity, terminateSession } from "@/lib/session";
 import { useSessionTimer } from "@/hooks/useSessionTimer";
@@ -107,20 +107,17 @@ export default function DashboardPage() {
     }
     setAuthLoading(false);
 
-    // Read tenant-isolated uploaded ETL data first, fallback to retailiq_latest_etl
+    // Read tenant-isolated uploaded ETL data strictly for the logged-in merchant's store
     let savedEtl: string | null = null;
     if (userObj?.business_id) {
       savedEtl = localStorage.getItem(`retailiq_etl_${userObj.business_id}`);
-    }
-    if (!savedEtl) {
-      savedEtl = localStorage.getItem("retailiq_latest_etl");
     }
 
     if (savedEtl) {
       try {
         setEtlSummary(JSON.parse(savedEtl));
       } catch {
-        // ignore
+        setEtlSummary(null);
       }
     } else {
       setEtlSummary(null);
@@ -176,7 +173,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleLoadSampleData = () => {
+  const handleLoadSampleData = async () => {
     const sampleSummary: ETLUploadSummary = {
       status: "completed",
       business_id: currentUser?.business_id || "retailiq_demo",
@@ -221,8 +218,12 @@ export default function DashboardPage() {
 
     if (currentUser?.business_id) {
       localStorage.setItem(`retailiq_etl_${currentUser.business_id}`, JSON.stringify(sampleSummary));
+      try {
+        await seedSampleCatalog(currentUser.business_id);
+      } catch (err) {
+        // local fallback
+      }
     }
-    localStorage.setItem("retailiq_latest_etl", JSON.stringify(sampleSummary));
     setEtlSummary(sampleSummary);
     window.dispatchEvent(new Event("retailiq_data_updated"));
   };
@@ -323,16 +324,18 @@ export default function DashboardPage() {
 
             {/* Clean Executive Navbar Controls */}
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-              {/* Registered Merchants / Admin Vendor Management Button */}
-              <button
-                onClick={() => setMerchantDirectoryOpen(true)}
-                className="inline-flex items-center gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-800 text-emerald-400 hover:border-emerald-500/50 hover:bg-slate-850 transition shrink-0"
-                title="प्रशासक भेन्डर तथा पसल व्यवस्थापन (View & Delete Vendors)"
-              >
-                <Store className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                <span className="font-bold text-[11px] sm:text-xs">{registeredMerchantCount}</span>
-                <span className="hidden md:inline text-slate-300">पसल व्यवस्थापन</span>
-              </button>
+              {/* Registered Merchants / Admin Vendor Management Button (Platform Superadmin Only) */}
+              {(currentUser?.is_platform_admin || currentUser?.role === "superadmin") && (
+                <button
+                  onClick={() => setMerchantDirectoryOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-xl text-xs font-semibold bg-rose-950/40 border border-rose-500/40 text-rose-300 hover:bg-rose-900/50 transition shrink-0"
+                  title="केन्द्रीय पसल तथा भेन्डर व्यवस्थापन (Platform Admin Only)"
+                >
+                  <Store className="h-3.5 w-3.5 text-rose-400 shrink-0" />
+                  <span className="font-bold text-[11px] sm:text-xs">{registeredMerchantCount}</span>
+                  <span className="hidden md:inline text-rose-200">पसल व्यवस्थापन</span>
+                </button>
+              )}
 
               {/* Stored Items CRUD Shortcut */}
               <button

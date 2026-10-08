@@ -54,6 +54,10 @@ services:
       - key: BACKEND_CORS_ORIGINS
         value: '["https://retailiq-nepal.onrender.com","https://retailiq-nepal.vercel.app","http://localhost:3000"]'
 
+      # Superadmin Registration Master Secret Key
+      - key: ADMIN_REGISTRATION_SECRET
+        sync: false # Can be configured in Render dashboard or falls back to default
+
   # ============================================================================
   # 2. Next.js Frontend Static Site (Zero-Budget Static Hosting)
   # ============================================================================
